@@ -28,18 +28,75 @@ import {
   saveStoredTenants,
   loadStoredWhatsAppSettings,
   saveStoredWhatsAppSettings,
+  loadStoredMasterAdmin,
+  saveStoredMasterAdmin,
   resetToSeedData,
   renewEquipmentService
 } from './utils/storage';
+import { INITIAL_BUSINESS_TENANTS } from './data/seedData';
 import { getEquipmentMetaIndex, invalidateEquipmentIndex } from './utils/indexing';
-import { Wrench, Printer, QrCode, Settings, Plus, Layers, Smartphone } from 'lucide-react';
+import { Wrench, Printer, QrCode, Settings, Plus, Layers, Smartphone, Lock } from 'lucide-react';
 
 export function App() {
-  // State
-  const [equipments, setEquipments] = useState<Equipment[]>(() => loadStoredEquipments());
-  const [technician, setTechnician] = useState<TechnicianProfile>(() => loadStoredTechnician());
+  // Load tenants list
   const [tenants, setTenants] = useState<BusinessTenant[]>(() => loadStoredTenants());
-  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppIntegrationSettings>(() => loadStoredWhatsAppSettings());
+
+  // Master Admin State (Evaluated synchronously from URL or localStorage)
+  const [isMasterAdmin, setIsMasterAdmin] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const adminParam = params.get('admin');
+    const masterParam = params.get('master');
+    const negocioParam = params.get('negocio') || params.get('b');
+
+    // If client link specifically opened with ?negocio=... and without ?admin=true, force regular tenant mode!
+    if (negocioParam && adminParam !== 'true' && adminParam !== 'korens' && masterParam !== 'true') {
+      return false;
+    }
+    if (adminParam === 'true' || adminParam === 'korens' || masterParam === 'true') {
+      saveStoredMasterAdmin(true);
+      return true;
+    }
+    return loadStoredMasterAdmin();
+  });
+
+  // Active Tenant ID State
+  const [activeTenantId, setActiveTenantId] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const negocioParam = params.get('negocio') || params.get('b');
+    const storedTenants = loadStoredTenants();
+    if (negocioParam) {
+      const match = storedTenants.find(t => t.slug.toLowerCase() === negocioParam.toLowerCase());
+      if (match) return match.id;
+    }
+    const savedActiveId = localStorage.getItem('frescotrack_active_tenant_id');
+    if (savedActiveId && storedTenants.some(t => t.id === savedActiveId)) {
+      return savedActiveId;
+    }
+    return storedTenants[0]?.id || 'tenant-001';
+  });
+
+  const activeTenant = tenants.find((t) => t.id === activeTenantId) || tenants[0] || INITIAL_BUSINESS_TENANTS[0];
+
+  // Technician profile synced to active tenant
+  const [technician, setTechnician] = useState<TechnicianProfile>(() => ({
+    name: activeTenant.technicianName,
+    businessName: activeTenant.businessName,
+    phone: activeTenant.phone,
+    city: activeTenant.city,
+    logoUrl: activeTenant.logoUrl,
+    brandColor: activeTenant.brandColor,
+    pricing: activeTenant.pricing,
+    customDomain: activeTenant.customDomain,
+    subdomain: activeTenant.slug,
+  }));
+
+  // Equipments across all tenants
+  const [equipments, setEquipments] = useState<Equipment[]>(() => loadStoredEquipments());
+
+  // WhatsApp settings loaded specifically for the active tenant
+  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppIntegrationSettings>(() => {
+    return loadStoredWhatsAppSettings(activeTenant.id, activeTenant.slug);
+  });
   
   const [viewMode, setViewMode] = useState<'admin' | 'public'>('admin');
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio'>('dashboard');
@@ -63,9 +120,34 @@ export function App() {
     saveStoredTenants(tenants);
   }, [tenants]);
 
+  // When activeTenantId changes or tenants update, sync technician and WhatsApp settings
   useEffect(() => {
-    saveStoredWhatsAppSettings(whatsAppSettings);
-  }, [whatsAppSettings]);
+    localStorage.setItem('frescotrack_active_tenant_id', activeTenantId);
+    const curr = tenants.find((t) => t.id === activeTenantId) || tenants[0];
+    if (curr) {
+      setTechnician({
+        name: curr.technicianName,
+        businessName: curr.businessName,
+        phone: curr.phone,
+        city: curr.city,
+        logoUrl: curr.logoUrl,
+        brandColor: curr.brandColor,
+        pricing: curr.pricing,
+        customDomain: curr.customDomain,
+        subdomain: curr.slug,
+      });
+      // Load this tenant's WhatsApp session
+      const tWhatsApp = loadStoredWhatsAppSettings(curr.id, curr.slug);
+      setWhatsAppSettings(tWhatsApp);
+    }
+  }, [activeTenantId, tenants]);
+
+  // If a technician somehow enters the studio tab without master admin rights, redirect to dashboard
+  useEffect(() => {
+    if (!isMasterAdmin && currentTab === 'studio') {
+      setCurrentTab('dashboard');
+    }
+  }, [isMasterAdmin, currentTab]);
 
   // Support direct QR URL routing: e.g. /equipo/FT-0041 or ?folio=FT-0041
   useEffect(() => {
@@ -77,18 +159,8 @@ export function App() {
     // Check if a specific business tenant is requested via URL: ?negocio=refrimadero-express
     if (negocioSlug) {
       const matchTenant = tenants.find((t) => t.slug.toLowerCase() === negocioSlug.toLowerCase());
-      if (matchTenant) {
-        setTechnician({
-          name: matchTenant.technicianName,
-          businessName: matchTenant.businessName,
-          phone: matchTenant.phone,
-          city: matchTenant.city,
-          logoUrl: matchTenant.logoUrl,
-          brandColor: matchTenant.brandColor,
-          pricing: matchTenant.pricing,
-          customDomain: matchTenant.customDomain,
-          subdomain: matchTenant.slug,
-        });
+      if (matchTenant && matchTenant.id !== activeTenantId) {
+        setActiveTenantId(matchTenant.id);
       }
     }
 
@@ -111,15 +183,25 @@ export function App() {
         setPublicViewEquipment(match);
       }
     }
-  }, [equipments, tenants]);
+  }, [equipments, tenants, activeTenantId]);
 
-  // Overdue count for notifications in O(1) from meta index
-  const overdueCount = getEquipmentMetaIndex(equipments).metrics.overdueCount;
+  // STRICT MULTI-TENANT ISOLATION:
+  // Only display equipments belonging to the active tenant
+  const currentTenantEquipments = equipments.filter(
+    (eq) => (eq.tenantId || 'tenant-001') === activeTenant.id
+  );
+
+  // Overdue count calculated only for active tenant's equipments
+  const overdueCount = getEquipmentMetaIndex(currentTenantEquipments).metrics.overdueCount;
 
   // Handlers
   const handleAddEquipment = (newEquipment: Equipment) => {
     invalidateEquipmentIndex();
-    const updated = [newEquipment, ...equipments];
+    const isolatedEquipment: Equipment = {
+      ...newEquipment,
+      tenantId: activeTenant.id,
+    };
+    const updated = [isolatedEquipment, ...equipments];
     setEquipments(updated);
   };
 
@@ -160,14 +242,16 @@ export function App() {
     setEquipments(reset.equipments);
     setTechnician(reset.technician);
     setTenants(reset.tenants);
+    setActiveTenantId('tenant-001');
+    const firstWhatsApp = loadStoredWhatsAppSettings('tenant-001', 'climas-del-golfo');
+    setWhatsAppSettings(firstWhatsApp);
   };
 
   const handleSaveTechnician = (updated: TechnicianProfile) => {
     setTechnician(updated);
-    // Also update current tenant if matches
     setTenants((prev) => 
       prev.map((t) => 
-        t.businessName === updated.businessName 
+        t.id === activeTenant.id
           ? {
               ...t,
               businessName: updated.businessName,
@@ -183,17 +267,7 @@ export function App() {
   };
 
   const handleSelectTenant = (tenant: BusinessTenant) => {
-    setTechnician({
-      name: tenant.technicianName,
-      businessName: tenant.businessName,
-      phone: tenant.phone,
-      city: tenant.city,
-      logoUrl: tenant.logoUrl,
-      brandColor: tenant.brandColor,
-      pricing: tenant.pricing,
-      customDomain: tenant.customDomain,
-      subdomain: tenant.slug,
-    });
+    setActiveTenantId(tenant.id);
     setCurrentTab('dashboard');
   };
 
@@ -205,13 +279,18 @@ export function App() {
     setTenants(tenants.filter((t) => t.id !== tenantId));
   };
 
+  const handleUpdateWhatsAppSettings = (newSettings: WhatsAppIntegrationSettings) => {
+    setWhatsAppSettings(newSettings);
+    saveStoredWhatsAppSettings(newSettings, activeTenant.id);
+  };
+
   // If in Public Website view mode (Customer landing page and quote calculator)
   if (viewMode === 'public') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
         <PublicBusinessWebsite
           technician={technician}
-          equipments={equipments}
+          equipments={currentTenantEquipments}
           onOpenEquipmentQR={(eq) => setPublicViewEquipment(eq)}
           onSwitchToAdmin={() => setViewMode('admin')}
         />
@@ -239,6 +318,7 @@ export function App() {
         onViewPublicWebsite={() => setViewMode('public')}
         overdueCount={overdueCount}
         isWhatsAppConnected={whatsAppSettings.status === 'connected'}
+        isMasterAdmin={isMasterAdmin}
       />
 
       {/* Main View Area */}
@@ -249,7 +329,7 @@ export function App() {
           <div className="space-y-6 animate-in fade-in duration-150">
             {/* KPIs Top Bar */}
             <DashboardKPIs
-              equipments={equipments}
+              equipments={currentTenantEquipments}
               onFilterClick={(filter) => {
                 if (filter === 'overdue') setActiveFilter('overdue');
                 else setActiveFilter('all');
@@ -260,7 +340,7 @@ export function App() {
 
             {/* List of Today's Preventive Maintenance Alerts */}
             <AlertsList
-              equipments={equipments}
+              equipments={currentTenantEquipments}
               technician={technician}
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
@@ -277,7 +357,7 @@ export function App() {
           <div className="animate-in fade-in duration-150">
             <QRStickerGenerator
               technician={technician}
-              equipments={equipments}
+              equipments={currentTenantEquipments}
               onOpenPublicQR={(eq) => setPublicViewEquipment(eq)}
             />
           </div>
@@ -289,14 +369,14 @@ export function App() {
             <QRScannerModal
               isOpen={true}
               onClose={() => setCurrentTab('dashboard')}
-              equipments={equipments}
+              equipments={currentTenantEquipments}
               onSelectEquipment={(eq) => setPublicViewEquipment(eq)}
             />
           </div>
         )}
 
-        {/* MICRO-APP STUDIO TAB (Multi-Tenant Management) */}
-        {currentTab === 'studio' && (
+        {/* MICRO-APP STUDIO TAB (Master Admin Multi-Tenant Management) */}
+        {currentTab === 'studio' && isMasterAdmin && (
           <div className="animate-in fade-in duration-150">
             <MicroAppStudio
               tenants={tenants}
@@ -304,6 +384,7 @@ export function App() {
               onSelectTenant={handleSelectTenant}
               onSaveTenant={handleSaveNewTenant}
               onDeleteTenant={handleDeleteTenant}
+              isMasterAdmin={isMasterAdmin}
               onPreviewPublicWebsite={(tenant) => {
                 handleSelectTenant(tenant);
                 setViewMode('public');
@@ -312,13 +393,13 @@ export function App() {
           </div>
         )}
 
-        {/* WHATSAPP QR INTEGRATION TAB */}
+        {/* WHATSAPP QR INTEGRATION TAB (Clean & isolated per micro-app) */}
         {currentTab === 'whatsapp' && (
           <div className="animate-in fade-in duration-150">
             <WhatsAppQRModule
               technician={technician}
               settings={whatsAppSettings}
-              onUpdateSettings={setWhatsAppSettings}
+              onUpdateSettings={handleUpdateWhatsAppSettings}
             />
           </div>
         )}
@@ -419,15 +500,17 @@ export function App() {
           <span>Stickers</span>
         </button>
 
-        <button
-          onClick={() => setCurrentTab('studio')}
-          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
-            currentTab === 'studio' ? 'text-indigo-600' : 'text-slate-500'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Estudio</span>
-        </button>
+        {isMasterAdmin && (
+          <button
+            onClick={() => setCurrentTab('studio')}
+            className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+              currentTab === 'studio' ? 'text-indigo-600' : 'text-slate-500'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Estudio</span>
+          </button>
+        )}
 
         <button
           onClick={() => setCurrentTab('settings')}
@@ -442,14 +525,53 @@ export function App() {
 
       {/* Footer (Hidden on print) */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 no-print">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-700">
             <span>{technician.businessName}</span>
             <span className="text-slate-400 font-normal">| Desarrollado con FrescoTrack ❄️</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-            <span>{technician.city} · Plataforma Multi-Tenant</span>
-            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] font-bold">v2.5</span>
+
+          <div className="flex items-center gap-3">
+            {isMasterAdmin ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                  👑 Master Admin Activo
+                </span>
+                <button
+                  onClick={() => {
+                    setIsMasterAdmin(false);
+                    saveStoredMasterAdmin(false);
+                    if (currentTab === 'studio') setCurrentTab('dashboard');
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-rose-600 underline transition-colors"
+                >
+                  Cerrar Sesión Admin
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  const pass = prompt('Ingresa la contraseña de Administrador Maestro de la Plataforma:');
+                  if (pass === 'korens2025' || pass === 'admin' || pass === 'fresco2025') {
+                    setIsMasterAdmin(true);
+                    saveStoredMasterAdmin(true);
+                    alert('✅ Acceso concedido: Modo Master Admin activado. Ahora tienes acceso al Estudio y creación de micro-apps.');
+                  } else if (pass !== null) {
+                    alert('❌ Contraseña incorrecta.');
+                  }
+                }}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
+                title="Acceso exclusivo para el Administrador de la Plataforma"
+              >
+                <Lock className="w-3 h-3 text-slate-400" />
+                <span>Acceso Admin</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+              <span>{technician.city}</span>
+              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] font-bold">v2.6</span>
+            </div>
           </div>
         </div>
       </footer>

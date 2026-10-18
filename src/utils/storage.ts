@@ -13,7 +13,26 @@ export function loadStoredEquipments(): Equipment[] {
     if (data) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        let modified = false;
+        const normalized = parsed.map((eq: Equipment) => {
+          if (!eq.tenantId) {
+            modified = true;
+            return { ...eq, tenantId: 'tenant-001' };
+          }
+          return eq;
+        });
+
+        const hasTenant2 = normalized.some((eq: Equipment) => eq.tenantId === 'tenant-002');
+        if (!hasTenant2) {
+          const missing = INITIAL_EQUIPMENT_LIST.filter(eq => eq.tenantId === 'tenant-002' || eq.tenantId === 'tenant-003');
+          normalized.push(...missing);
+          modified = true;
+        }
+
+        if (modified) {
+          saveStoredEquipments(normalized);
+        }
+        return normalized;
       }
     }
   } catch (e) {
@@ -123,41 +142,69 @@ export function renewEquipmentService(
   });
 }
 
-export const DEFAULT_WHATSAPP_SETTINGS: WhatsAppIntegrationSettings = {
-  status: 'disconnected',
-  autoSendOverdueReminders: true,
-  autoSendHour: 9,
-  notifyOnCustomerIssueReport: true,
-  sendWelcomeOnNewEquipment: true,
-  serverUrl: 'https://evolution.korensmx.com',
-  instanceName: 'frescotrack-climas',
-  apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
-};
+const STORAGE_MASTER_ADMIN_KEY = 'frescotrack_master_admin_session';
 
-export function loadStoredWhatsAppSettings(): WhatsAppIntegrationSettings {
+export function loadStoredMasterAdmin(): boolean {
   try {
-    const data = localStorage.getItem(STORAGE_WHATSAPP_KEY);
+    return localStorage.getItem(STORAGE_MASTER_ADMIN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function saveStoredMasterAdmin(isAdmin: boolean): void {
+  try {
+    localStorage.setItem(STORAGE_MASTER_ADMIN_KEY, isAdmin ? 'true' : 'false');
+  } catch {}
+}
+
+export function getTenantDefaultWhatsAppSettings(tenantSlug?: string): WhatsAppIntegrationSettings {
+  const cleanSlug = tenantSlug ? tenantSlug.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'climas-del-golfo';
+  return {
+    status: 'disconnected',
+    autoSendOverdueReminders: true,
+    autoSendHour: 9,
+    notifyOnCustomerIssueReport: true,
+    sendWelcomeOnNewEquipment: true,
+    serverUrl: 'https://evolution.korensmx.com',
+    instanceName: `frescotrack-${cleanSlug}`,
+    apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
+  };
+}
+
+export const DEFAULT_WHATSAPP_SETTINGS = getTenantDefaultWhatsAppSettings('climas-del-golfo');
+
+export function loadStoredWhatsAppSettings(tenantId?: string, tenantSlug?: string): WhatsAppIntegrationSettings {
+  const defaults = getTenantDefaultWhatsAppSettings(tenantSlug);
+  const key = tenantId ? `frescotrack_whatsapp_${tenantId}` : STORAGE_WHATSAPP_KEY;
+  try {
+    const data = localStorage.getItem(key);
     if (data) {
       const parsed = JSON.parse(data);
       // Auto-migrate legacy sslip.io or unencrypted http URLs to production evolution.korensmx.com
       if (!parsed.serverUrl || parsed.serverUrl.includes('sslip.io') || parsed.serverUrl.startsWith('http://')) {
-        parsed.serverUrl = DEFAULT_WHATSAPP_SETTINGS.serverUrl;
+        parsed.serverUrl = defaults.serverUrl;
       }
       if (!parsed.apiKey || parsed.apiKey === 'ft_live_korens_833_sec') {
-        parsed.apiKey = DEFAULT_WHATSAPP_SETTINGS.apiKey;
+        parsed.apiKey = defaults.apiKey;
       }
-      return { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed };
+      if (!parsed.instanceName || parsed.instanceName === 'frescotrack-climas') {
+        parsed.instanceName = defaults.instanceName;
+      }
+      return { ...defaults, ...parsed };
     }
   } catch (e) {
     console.error('Error loading WhatsApp settings from localStorage', e);
   }
-  return DEFAULT_WHATSAPP_SETTINGS;
+  return defaults;
 }
 
-export function saveStoredWhatsAppSettings(settings: WhatsAppIntegrationSettings): void {
+export function saveStoredWhatsAppSettings(settings: WhatsAppIntegrationSettings, tenantId?: string): void {
+  const key = tenantId ? `frescotrack_whatsapp_${tenantId}` : STORAGE_WHATSAPP_KEY;
   try {
-    localStorage.setItem(STORAGE_WHATSAPP_KEY, JSON.stringify(settings));
+    localStorage.setItem(key, JSON.stringify(settings));
   } catch (e) {
     console.error('Error saving WhatsApp settings to localStorage', e);
   }
 }
+

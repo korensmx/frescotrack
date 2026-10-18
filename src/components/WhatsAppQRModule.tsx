@@ -374,9 +374,6 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   Vinculación de WhatsApp Business
                 </h2>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Opción 2 · Código QR
-                </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 Conecta tu WhatsApp Business mediante "Dispositivos Vinculados" para automatizar la cobranza preventiva sin intermediarios

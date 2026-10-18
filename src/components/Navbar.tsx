@@ -11,6 +11,7 @@ interface NavbarProps {
   onViewPublicWebsite: () => void;
   overdueCount: number;
   isWhatsAppConnected?: boolean;
+  isMasterAdmin?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onViewPublicWebsite,
   overdueCount,
   isWhatsAppConnected = false,
+  isMasterAdmin = false,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs no-print">
@@ -53,9 +55,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-black text-xl tracking-tight text-slate-900 flex items-center truncate max-w-[170px] sm:max-w-xs">
                 {technician.businessName.split(' ')[0]}<span className="text-sky-600">{technician.businessName.split(' ').slice(1).join(' ') ? ` ${technician.businessName.split(' ').slice(1).join(' ')}` : ''}</span>
               </span>
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200">
-                PRO
-              </span>
+              {isMasterAdmin ? (
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shadow-xs" title="Modo Administrador Maestro Activo">
+                  👑 ADMIN
+                </span>
+              ) : (
+                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200">
+                  PRO
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
               {technician.name} · Bitácora QR & Cobranza
@@ -106,17 +114,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Escanear QR</span>
           </button>
 
-          <button
-            onClick={() => setCurrentTab('studio')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
-              currentTab === 'studio'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-4 h-4 text-indigo-600" />
-            <span>Estudio</span>
-          </button>
+          {isMasterAdmin && (
+            <button
+              onClick={() => setCurrentTab('studio')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                currentTab === 'studio'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-indigo-600" />
+              <span>Estudio</span>
+            </button>
+          )}
 
           <button
             onClick={() => setCurrentTab('whatsapp')}
@@ -185,14 +195,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Quick Studio Icon on mobile */}
-          <button
-            onClick={() => setCurrentTab('studio')}
-            title="Estudio de Micro-Apps"
-            className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
-          >
-            <Layers className="w-4 h-4 text-indigo-600" />
-          </button>
+          {/* Quick Studio Icon on mobile (Master Admin only) */}
+          {isMasterAdmin && (
+            <button
+              onClick={() => setCurrentTab('studio')}
+              title="Estudio de Micro-Apps (Master Admin)"
+              className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
+            >
+              <Layers className="w-4 h-4 text-indigo-600" />
+            </button>
+          )}
 
           {/* Quick Settings Icon on mobile */}
           <button

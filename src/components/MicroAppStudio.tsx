@@ -32,6 +32,7 @@ interface MicroAppStudioProps {
   onSaveTenant: (tenant: BusinessTenant) => void;
   onDeleteTenant: (tenantId: string) => void;
   onPreviewPublicWebsite?: (tenant: BusinessTenant) => void;
+  isMasterAdmin?: boolean;
 }
 
 export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
@@ -41,6 +42,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
   onSaveTenant,
   onDeleteTenant,
   onPreviewPublicWebsite,
+  isMasterAdmin = false,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
@@ -169,13 +171,15 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="py-3 px-5 rounded-2xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/30 transition-all shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Crear Nueva Micro-App</span>
-          </button>
+          {isMasterAdmin && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="py-3 px-5 rounded-2xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/30 transition-all shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Crear Nueva Micro-App</span>
+            </button>
+          )}
         </div>
 
         {/* Informative Pills */}
@@ -300,54 +304,61 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                 </button>
 
                 {/* Direct Link & Copy */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => handleCopyUrl(t)}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
-                  >
-                    {copiedSlug === t.slug ? (
-                      <span className="text-emerald-700 font-bold">¡Enlace Copiado!</span>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3 text-slate-500" />
-                        <span>Copiar URL Pública</span>
-                      </>
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleCopyUrl(t)}
+                      className="flex-1 py-2 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+                      title="Copiar URL directa para entregar al cliente o técnico (100% aislada)"
+                    >
+                      {copiedSlug === t.slug ? (
+                        <span className="text-emerald-700 font-bold">¡Enlace Aislado Copiado!</span>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-slate-500" />
+                          <span>Copiar Enlace para Cliente</span>
+                        </>
+                      )}
+                    </button>
+
+                    <a
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition-colors"
+                      title="Abrir micro-app del cliente en pestaña nueva"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+
+                    {onPreviewPublicWebsite && (
+                      <button
+                        onClick={() => onPreviewPublicWebsite(t)}
+                        className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors"
+                        title="Ver Sitio Web Público de este Negocio (Vista de sus clientes)"
+                      >
+                        <Globe className="w-3.5 h-3.5" />
+                      </button>
                     )}
-                  </button>
 
-                  {onPreviewPublicWebsite && (
-                    <button
-                      onClick={() => onPreviewPublicWebsite(t)}
-                      className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors"
-                      title="Ver Sitio Web Público de este Negocio"
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition-colors"
-                    title="Abrir en pestaña nueva con parámetro de negocio"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  {tenants.length > 1 && (
-                    <button
-                      onClick={() => {
-                        if (confirm(`¿Eliminar la micro-app de ${t.businessName}?`)) {
-                          onDeleteTenant(t.id);
-                        }
-                      }}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                      title="Eliminar micro-app"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                    {isMasterAdmin && tenants.length > 1 && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`¿Eliminar la micro-app de ${t.businessName}?`)) {
+                            onDeleteTenant(t.id);
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                        title="Eliminar micro-app"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-medium px-1 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span>Acceso aislado: el cliente no verá otros negocios ni el Estudio</span>
+                  </div>
                 </div>
               </div>
             </div>

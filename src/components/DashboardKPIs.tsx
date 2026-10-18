@@ -44,7 +44,7 @@ export const DashboardKPIs: React.FC<DashboardKPIsProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black">
-                {isWhatsAppConnected ? 'WhatsApp Business Vinculado' : 'Automatiza tus Envíos (Opción 2 · QR)'}
+                {isWhatsAppConnected ? 'WhatsApp Business Vinculado' : 'Automatiza tus Envíos por WhatsApp'}
               </span>
               <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                 isWhatsAppConnected ? 'bg-emerald-200 text-emerald-900' : 'bg-emerald-100 text-emerald-800'

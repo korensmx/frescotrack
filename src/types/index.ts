@@ -54,6 +54,7 @@ export interface Equipment {
   contactedDate?: string;
   servicesHistory: ServiceRecord[];
   notes?: string;
+  tenantId?: string; // Foreign key linking equipment to specific BusinessTenant
 }
 
 export interface PricingMatrix {
@@ -102,6 +103,7 @@ export interface BusinessTenant {
   customDomain?: string;
   createdAt: string;
   isActive?: boolean;
+  whatsAppSettings?: WhatsAppIntegrationSettings;
 }
 
 export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'qrcode' | 'connected';

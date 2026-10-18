@@ -28,6 +28,16 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     customDomain: 'frescotrack.versel.app',
     createdAt: '2026-09-15',
     isActive: true,
+    whatsAppSettings: {
+      status: 'disconnected',
+      autoSendOverdueReminders: true,
+      autoSendHour: 9,
+      notifyOnCustomerIssueReport: true,
+      sendWelcomeOnNewEquipment: true,
+      serverUrl: 'https://evolution.korensmx.com',
+      instanceName: 'frescotrack-climas-del-golfo',
+      apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
+    },
   },
   {
     id: 'tenant-002',
@@ -45,6 +55,16 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     customDomain: 'refrimadero.versel.app',
     createdAt: '2026-10-01',
     isActive: false,
+    whatsAppSettings: {
+      status: 'disconnected',
+      autoSendOverdueReminders: true,
+      autoSendHour: 9,
+      notifyOnCustomerIssueReport: true,
+      sendWelcomeOnNewEquipment: true,
+      serverUrl: 'https://evolution.korensmx.com',
+      instanceName: 'frescotrack-refrimadero-express',
+      apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
+    },
   },
   {
     id: 'tenant-003',
@@ -63,6 +83,16 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     customDomain: 'doctorclima.versel.app',
     createdAt: '2026-10-10',
     isActive: false,
+    whatsAppSettings: {
+      status: 'disconnected',
+      autoSendOverdueReminders: true,
+      autoSendHour: 9,
+      notifyOnCustomerIssueReport: true,
+      sendWelcomeOnNewEquipment: true,
+      serverUrl: 'https://evolution.korensmx.com',
+      instanceName: 'frescotrack-doctor-clima-altamira',
+      apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
+    },
   }
 ];
 
@@ -270,6 +300,114 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
         warrantyDays: 30,
       }
     ],
-    notes: 'Clima de ventana empotrado en muro.'
+    notes: 'Clima de ventana empotrado en muro.',
+    tenantId: 'tenant-001'
+  },
+  // RefriMadero Express (tenant-002) Initial Equipments
+  {
+    id: 'eq-007',
+    qrId: 'RM-001',
+    clientName: 'Arq. Esteban Morales',
+    clientPhone: '8332908877',
+    clientColonia: 'Condominios Sirenas / Playa Miramar, Cd. Madero',
+    clientCity: 'Cd. Madero',
+    applianceType: 'Minisplit',
+    voltage: '220V',
+    systemType: 'Inverter',
+    brand: 'Mirage',
+    capacity: '2 Ton',
+    inverter: true,
+    location: 'Sala Vista al Mar',
+    installationDate: getRelativeISODate(-240),
+    reminderIntervalMonths: 6,
+    lastServiceDate: getRelativeISODate(-190), // Overdue
+    suggestedPrice: 950,
+    contactedStatus: 'pending',
+    servicesHistory: [
+      {
+        id: 'srv-007',
+        date: getRelativeISODate(-190),
+        type: 'Mantenimiento Preventivo',
+        technicianName: 'Ing. José Luis Pecero',
+        cost: 950,
+        technicalNotes: 'Limpieza profunda anti-salitre en condensadora marina.',
+        pressurePSI: '120 PSI',
+        refrigerantType: 'R410A',
+        warrantyDays: 45,
+      }
+    ],
+    notes: 'Equipo expuesto a brisa marina en Miramar.',
+    tenantId: 'tenant-002'
+  },
+  {
+    id: 'eq-008',
+    qrId: 'RM-002',
+    clientName: 'Sra. Carmen Salazar',
+    clientPhone: '8331123344',
+    clientColonia: 'Col. Unidad Nacional, Cd. Madero',
+    clientCity: 'Cd. Madero',
+    applianceType: 'Minisplit',
+    voltage: '110V',
+    systemType: 'Inverter',
+    brand: 'Carrier',
+    capacity: '1.5 Ton',
+    inverter: true,
+    location: 'Recámara Principal',
+    installationDate: getRelativeISODate(-120),
+    reminderIntervalMonths: 6,
+    lastServiceDate: getRelativeISODate(-120),
+    suggestedPrice: 850,
+    contactedStatus: 'scheduled',
+    servicesHistory: [
+      {
+        id: 'srv-008',
+        date: getRelativeISODate(-120),
+        type: 'Instalación Nueva',
+        technicianName: 'Ing. José Luis Pecero',
+        cost: 1800,
+        technicalNotes: 'Instalación nueva con taquetes expansivos y presurización con nitrógeno.',
+        pressurePSI: '125 PSI',
+        refrigerantType: 'R410A',
+        warrantyDays: 60,
+      }
+    ],
+    notes: 'Cuidado con el perro en la cochera.',
+    tenantId: 'tenant-002'
+  },
+  // Doctor Clima Altamira (tenant-003) Initial Equipments
+  {
+    id: 'eq-009',
+    qrId: 'DC-001',
+    clientName: 'Logística Portuaria del Golfo',
+    clientPhone: '8333145522',
+    clientColonia: 'Zona Industrial Puerto, Altamira',
+    clientCity: 'Altamira',
+    applianceType: 'Minisplit',
+    voltage: '220V',
+    systemType: 'Convencional / Normal',
+    brand: 'York',
+    capacity: '3 Ton',
+    inverter: false,
+    location: 'Oficina de Operaciones y Báscula',
+    installationDate: getRelativeISODate(-360),
+    reminderIntervalMonths: 4,
+    lastServiceDate: getRelativeISODate(-135), // Overdue
+    suggestedPrice: 1500,
+    contactedStatus: 'pending',
+    servicesHistory: [
+      {
+        id: 'srv-009',
+        date: getRelativeISODate(-135),
+        type: 'Mantenimiento Preventivo',
+        technicianName: 'Téc. Antonio Balderas',
+        cost: 1500,
+        technicalNotes: 'Lavado químico de condensadora por polvo industrial.',
+        pressurePSI: '68 PSI',
+        refrigerantType: 'R22',
+        warrantyDays: 30,
+      }
+    ],
+    notes: 'Requiere chaleco y casco de seguridad para ingresar.',
+    tenantId: 'tenant-003'
   }
 ];

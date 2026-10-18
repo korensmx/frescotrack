@@ -30,6 +30,7 @@ interface MicroAppStudioProps {
   onSelectTenant: (tenant: BusinessTenant) => void;
   onSaveTenant: (tenant: BusinessTenant) => void;
   onDeleteTenant: (tenantId: string) => void;
+  onPreviewPublicWebsite?: (tenant: BusinessTenant) => void;
 }
 
 export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
@@ -38,6 +39,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
   onSelectTenant,
   onSaveTenant,
   onDeleteTenant,
+  onPreviewPublicWebsite,
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
@@ -302,12 +304,22 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                     )}
                   </button>
 
+                  {onPreviewPublicWebsite && (
+                    <button
+                      onClick={() => onPreviewPublicWebsite(t)}
+                      className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors"
+                      title="Ver Sitio Web Público de este Negocio"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
                   <a
                     href={previewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition-colors"
-                    title="Abrir en pestaña nueva"
+                    title="Abrir en pestaña nueva con parámetro de negocio"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>

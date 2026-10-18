@@ -1,5 +1,5 @@
 import React from 'react';
-import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Flame, Layers } from 'lucide-react';
+import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Flame, Layers, Globe } from 'lucide-react';
 import type { TechnicianProfile } from '../types';
 
 interface NavbarProps {
@@ -7,6 +7,7 @@ interface NavbarProps {
   currentTab: 'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio';
   setCurrentTab: (tab: 'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio') => void;
   onOpenRegister: () => void;
+  onViewPublicWebsite: () => void;
   overdueCount: number;
 }
 
@@ -15,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   setCurrentTab,
   onOpenRegister,
+  onViewPublicWebsite,
   overdueCount,
 }) => {
   return (
@@ -138,14 +140,33 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* View Public Website Button (Desktop) */}
+          <button
+            onClick={onViewPublicWebsite}
+            className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs transition-colors shadow-2xs"
+            title="Ver Sitio Web Público del Negocio (Vista del Cliente)"
+          >
+            <Globe className="w-3.5 h-3.5 text-sky-600" />
+            <span>Sitio Web Público</span>
+          </button>
+
+          {/* Quick Globe Icon on Mobile & Tablet */}
+          <button
+            onClick={onViewPublicWebsite}
+            title="Ver Sitio Web Público del Negocio"
+            className="lg:hidden p-2 rounded-xl text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors"
+          >
+            <Globe className="w-4 h-4 text-sky-600" />
+          </button>
+
           {/* Quick Studio Icon on mobile */}
           <button
             onClick={() => setCurrentTab('studio')}
             title="Estudio de Micro-Apps"
             className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
           >
-            <Layers className="w-5 h-5 text-indigo-600" />
+            <Layers className="w-4 h-4 text-indigo-600" />
           </button>
 
           {/* Quick Settings Icon on mobile */}
@@ -154,13 +175,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Ajustes de Técnico y Tarifas"
             className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4 h-4" />
           </button>
 
           {/* Big Add Equipment CTA Button */}
           <button
             onClick={onOpenRegister}
-            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl shadow-md shadow-sky-600/25 transition-all text-sm"
+            className="flex items-center gap-1.5 sm:gap-2 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl shadow-md shadow-sky-600/25 transition-all text-xs sm:text-sm"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span className="hidden xs:inline">Nuevo Clima</span>

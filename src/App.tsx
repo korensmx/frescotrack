@@ -9,6 +9,7 @@ import { QuickServiceModal } from './components/QuickServiceModal';
 import { SettingsModal } from './components/SettingsModal';
 import { QRScannerModal } from './components/QRScannerModal';
 import { MicroAppStudio } from './components/MicroAppStudio';
+import { PublicBusinessWebsite } from './components/PublicBusinessWebsite';
 import type { 
   Equipment, 
   TechnicianProfile, 
@@ -35,6 +36,7 @@ export function App() {
   const [technician, setTechnician] = useState<TechnicianProfile>(() => loadStoredTechnician());
   const [tenants, setTenants] = useState<BusinessTenant[]>(() => loadStoredTenants());
   
+  const [viewMode, setViewMode] = useState<'admin' | 'public'>('admin');
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio'>('dashboard');
   const [activeFilter, setActiveFilter] = useState<'overdue' | 'upcoming' | 'ok' | 'all'>('overdue');
 
@@ -79,6 +81,11 @@ export function App() {
           subdomain: matchTenant.slug,
         });
       }
+    }
+
+    const vistaParam = urlParams.get('vista') || urlParams.get('portal') || urlParams.get('cliente');
+    if (vistaParam === 'public' || vistaParam === '1' || vistaParam === 'web') {
+      setViewMode('public');
     }
 
     let targetFolio: string | null = null;
@@ -187,6 +194,29 @@ export function App() {
     setTenants(tenants.filter((t) => t.id !== tenantId));
   };
 
+  // If in Public Website view mode (Customer landing page and quote calculator)
+  if (viewMode === 'public') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+        <PublicBusinessWebsite
+          technician={technician}
+          equipments={equipments}
+          onOpenEquipmentQR={(eq) => setPublicViewEquipment(eq)}
+          onSwitchToAdmin={() => setViewMode('admin')}
+        />
+
+        {/* Public Equipment Screen Mockup (What customer sees on QR scan) */}
+        {publicViewEquipment && (
+          <PublicEquipmentView
+            equipment={publicViewEquipment}
+            technician={technician}
+            onClose={() => setPublicViewEquipment(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-16 md:pb-0">
       {/* Top Navigation */}
@@ -195,6 +225,7 @@ export function App() {
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         onOpenRegister={() => setIsRegisterOpen(true)}
+        onViewPublicWebsite={() => setViewMode('public')}
         overdueCount={overdueCount}
       />
 
@@ -259,6 +290,10 @@ export function App() {
               onSelectTenant={handleSelectTenant}
               onSaveTenant={handleSaveNewTenant}
               onDeleteTenant={handleDeleteTenant}
+              onPreviewPublicWebsite={(tenant) => {
+                handleSelectTenant(tenant);
+                setViewMode('public');
+              }}
             />
           </div>
         )}

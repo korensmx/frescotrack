@@ -286,7 +286,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Extra by Voltage & Inverter */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   ⚡ Recargo Voltaje 220V:
@@ -318,22 +318,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                 </div>
                 <span className="text-[10px] text-slate-400">Por cuidado de tarjeta</span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                  🌊 Recargo Salitre (Playa):
-                </label>
-                <div className="relative">
-                  <DollarSign className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                  <input
-                    type="number"
-                    value={pricing.salitreExtra}
-                    onChange={(e) => setPricing({ ...pricing, salitreExtra: Number(e.target.value) })}
-                    step="25"
-                    className="w-full pl-7 pr-2 py-1.5 bg-white rounded-xl border border-slate-300 text-sm font-bold text-slate-900"
-                  />
-                </div>
               </div>
             </div>
 

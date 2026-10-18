@@ -16,7 +16,6 @@ export const DEFAULT_PRICING_MATRIX: PricingMatrix = {
     '2.5 Ton': 250,
     '3 Ton': 400,
   },
-  salitreExtra: 150,
   commercialExtra: 300,
 };
 
@@ -30,7 +29,6 @@ export function calculateEquipmentServicePrice(
     voltage: VoltageType;
     systemType: SystemType;
     capacity: CapacityType;
-    isSalitre?: boolean;
     isCommercial?: boolean;
   },
   matrix: PricingMatrix = DEFAULT_PRICING_MATRIX
@@ -59,9 +57,6 @@ export function calculateEquipmentServicePrice(
   price += capacityDelta;
 
   // 5. Environmental extras
-  if (specs.isSalitre) {
-    price += matrix.salitreExtra;
-  }
   if (specs.isCommercial) {
     price += matrix.commercialExtra;
   }

@@ -107,7 +107,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         voltage,
         systemType,
         capacity,
-        isSalitre: reminderMonths === 4,
         isCommercial: reminderMonths === 3,
       }, technician.pricing);
       setCost(calculated);
@@ -148,7 +147,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       voltage,
       systemType,
       capacity,
-      isSalitre: reminderMonths === 4,
       isCommercial: reminderMonths === 3,
     }, technician.pricing);
     setCost(calculated);
@@ -619,7 +617,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                   </div>
 
                   <p className="text-[11px] text-emerald-800 font-medium">
-                    {applianceType} · {voltage} · {systemType} · {capacity} {reminderMonths === 4 ? '(Zona Salitre)' : ''}
+                    {applianceType} · {voltage} · {systemType} · {capacity}
                   </p>
                 </div>
 
@@ -634,7 +632,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
                     className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
                   >
                     <option value={6}>Cada 6 meses (Residencial Normal)</option>
-                    <option value={4}>Cada 4 meses (Playa Miramar / Brisa Salina)</option>
+                    <option value={4}>Cada 4 meses (Uso continuo / oficinas)</option>
                     <option value={3}>Cada 3 meses (Comercial / Restaurante)</option>
                     <option value={12}>Cada 12 meses (Uso esporádico)</option>
                   </select>

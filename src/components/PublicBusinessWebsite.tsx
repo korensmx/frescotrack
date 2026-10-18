@@ -55,7 +55,6 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
   const [voltage, setVoltage] = useState<VoltageType>('220V');
   const [system, setSystem] = useState<SystemType>('Inverter');
   const [capacity, setCapacity] = useState<CapacityType>('1.5 Ton');
-  const [isSalitreZone, setIsSalitreZone] = useState(false);
 
   // Folio Search State
   const [searchFolio, setSearchFolio] = useState('');
@@ -67,7 +66,6 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
     voltage,
     systemType: system,
     capacity,
-    isSalitre: isSalitreZone,
   }, technician.pricing);
 
   // WhatsApp Quote Request URL
@@ -75,7 +73,6 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
 
 ❄️ Equipo: ${appliance} ${capacity}
 ⚡ Voltaje: ${voltage} (${system})
-📍 Zona: ${isSalitreZone ? 'Cerca de playa / salitre' : 'Zona conurbada'}
 💵 Cotización en web: $${calculatedPrice} MXN
 
 ¿Qué días y horarios tienes disponibles para visitarme? ¡Gracias!`;
@@ -411,21 +408,6 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Salitre Toggle */}
-            <div className="pt-2">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isSalitreZone}
-                  onChange={(e) => setIsSalitreZone(e.target.checked)}
-                  className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300"
-                />
-                <span className="text-xs font-bold text-slate-700">
-                  ¿Ubicado cerca de playa o zona de alta brisa marina / salitre? (+Protector dieléctrico Blue Fin)
-                </span>
-              </label>
             </div>
 
           </div>

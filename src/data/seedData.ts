@@ -41,7 +41,6 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     pricing: {
       ...DEFAULT_PRICING_MATRIX,
       baseMinisplit: 750,
-      salitreExtra: 200,
     },
     customDomain: 'refrimadero.versel.app',
     createdAt: '2026-10-01',
@@ -118,9 +117,9 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
     inverter: true,
     location: 'Recepción y Espera',
     installationDate: getRelativeISODate(-300),
-    reminderIntervalMonths: 4, // Salitre
+    reminderIntervalMonths: 4, // Ciclo cada 4 meses
     lastServiceDate: getRelativeISODate(-123),
-    suggestedPrice: 1100, // Minisplit + 220V + Inverter + 2 Tn + Salitre
+    suggestedPrice: 1000, // Minisplit + 220V + Inverter + 2 Tn
     contactedStatus: 'pending',
     servicesHistory: [
       {
@@ -128,14 +127,14 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
         date: getRelativeISODate(-123),
         type: 'Mantenimiento Preventivo',
         technicianName: 'Téc. Carlos Mendoza',
-        cost: 1100,
-        technicalNotes: 'Zona de alta corrosión por brisa marina de Miramar. Se aplicó protector dieléctrico anticorrosivo Blue Fin en serpentín.',
+        cost: 1000,
+        technicalNotes: 'Limpieza profunda de turbina y serpentín con hidrolavadora.',
         pressurePSI: '115 PSI',
         refrigerantType: 'R410A',
         warrantyDays: 30,
       }
     ],
-    notes: 'Importante: equipo muy expuesto al salitre.'
+    notes: 'Ciclo intensivo cada 4 meses.'
   },
   {
     id: 'eq-003',

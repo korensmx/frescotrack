@@ -47,7 +47,7 @@ export interface Equipment {
   inverter: boolean;
   location: string; // Recámara Principal, Sala/Comedor, etc.
   installationDate: string; // ISO date
-  reminderIntervalMonths: number; // 6, 4 (salitre), 3 (comercial)
+  reminderIntervalMonths: number; // 6 (residencial), 4, 3 (comercial)
   lastServiceDate: string; // ISO date
   suggestedPrice: number;
   contactedStatus: ContactStatus;
@@ -73,7 +73,6 @@ export interface PricingMatrix {
   capacityDeltas: Record<CapacityType, number>;
 
   // Environmental extras
-  salitreExtra: number; // e.g. 150
   commercialExtra: number; // e.g. 300
 }
 

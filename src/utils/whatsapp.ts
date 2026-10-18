@@ -44,7 +44,7 @@ export function buildPreventiveWhatsAppMessage(
   const cycleText = equipment.reminderIntervalMonths === 6
     ? '6 meses'
     : equipment.reminderIntervalMonths === 4
-    ? '4 meses (zona salitre)'
+    ? '4 meses'
     : equipment.reminderIntervalMonths === 3
     ? '3 meses (uso comercial)'
     : `${equipment.reminderIntervalMonths} meses`;

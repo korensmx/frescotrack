@@ -87,7 +87,7 @@ export const AlertsList: React.FC<AlertsListProps> = ({
             </span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Clientes que cumplieron su ciclo de 6 meses (o ciclo de playa/salitre). Contáctalos para asegurar tu ingreso.
+            Clientes que cumplieron su ciclo de mantenimiento preventivo. Contáctalos para asegurar tu ingreso.
           </p>
         </div>
       </div>

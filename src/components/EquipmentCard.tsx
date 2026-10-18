@@ -48,7 +48,7 @@ export const EquipmentCard: React.FC<EquipmentCardProps> = ({
   const cycleText = equipment.reminderIntervalMonths === 6
     ? 'Ciclo 6 meses'
     : equipment.reminderIntervalMonths === 4
-    ? 'Ciclo 4 meses (Salitre)'
+    ? 'Ciclo 4 meses'
     : equipment.reminderIntervalMonths === 3
     ? 'Ciclo 3 meses (Comercial)'
     : `Ciclo ${equipment.reminderIntervalMonths} meses`;

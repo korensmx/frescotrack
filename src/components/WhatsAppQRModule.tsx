@@ -102,6 +102,13 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
     };
   }, []);
 
+  // Auto-fetch real QR code immediately if arriving on 'qrcode' state without an active QR
+  useEffect(() => {
+    if (settings.status === 'qrcode' && !qrBase64 && !qrCode && !isLoadingQR) {
+      requestRealQrCode(true);
+    }
+  }, [settings.status]);
+
   /**
    * Fetch a real Baileys pairing QR code from Evolution API
    */
@@ -252,6 +259,24 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
     };
   }, [settings.status, serverUrl, instanceName, apiKey]);
 
+  const handleForceRefresh = async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) {
+      console.warn('Error clearing caches', e);
+    }
+    window.location.reload();
+  };
+
   const triggerConfetti = () => {
     confetti({
       particleCount: 100,
@@ -359,8 +384,11 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
             </div>
           </div>
 
-          {/* Status Badge */}
-          <div className="flex items-center gap-2">
+          {/* Status Badge & Version Indicator */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold">
+              v2.5 Evolution API Oficial
+            </span>
             {settings.status === 'connected' ? (
               <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -377,6 +405,14 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                 <span>Desconectado</span>
               </span>
             )}
+            <button
+              type="button"
+              onClick={handleForceRefresh}
+              title="Limpiar caché y recargar versión más reciente"
+              className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -474,7 +510,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             {/* The QR Box */}
             <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
-              <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 relative group min-h-[224px] min-w-[224px] flex items-center justify-center">
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 relative group min-h-[260px] min-w-[260px] flex items-center justify-center">
                 {isLoadingQR ? (
                   <div className="flex flex-col items-center justify-center p-8 space-y-2">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
@@ -482,15 +518,15 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                   </div>
                 ) : qrBase64 ? (
                   <img
-                    src={qrBase64}
+                    src={qrBase64.startsWith('data:') ? qrBase64 : `data:image/png;base64,${qrBase64}`}
                     alt="Código QR de Vinculación WhatsApp"
-                    className="w-[200px] h-[200px] object-contain rounded-xl select-none pointer-events-none"
+                    className="w-[240px] h-[240px] object-contain rounded-xl select-none"
                   />
                 ) : qrCode ? (
                   <QRCodeSVG
                     value={qrCode}
-                    size={200}
-                    level="M"
+                    size={240}
+                    level="L"
                     includeMargin={true}
                   />
                 ) : (

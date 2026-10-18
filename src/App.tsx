@@ -447,8 +447,9 @@ export function App() {
             <span>{technician.businessName}</span>
             <span className="text-slate-400 font-normal">| Desarrollado con FrescoTrack ❄️</span>
           </div>
-          <div className="text-slate-400 text-[11px]">
-            {technician.city} · Plataforma Multi-Tenant
+          <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+            <span>{technician.city} · Plataforma Multi-Tenant</span>
+            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px] font-bold">v2.5</span>
           </div>
         </div>
       </footer>

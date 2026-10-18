@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Smartphone, 
   QrCode, 
@@ -7,30 +7,31 @@ import {
   RefreshCw, 
   Power, 
   Send, 
-  ShieldCheck, 
   Wifi, 
   Battery, 
   Clock, 
   Bell, 
-  Sparkles, 
   Server, 
-  Settings, 
   Check, 
   Loader2,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  MessageSquare
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import type { 
   TechnicianProfile, 
   WhatsAppIntegrationSettings, 
-  WhatsAppConnectionStatus, 
   WhatsAppDeviceInfo 
 } from '../types';
 import { formatDisplayPhone } from '../utils/whatsapp';
+import { 
+  getEvolutionQrCode, 
+  getEvolutionConnectionState, 
+  getEvolutionInstanceDetails,
+  sendEvolutionTextMessage,
+  logoutEvolutionInstance
+} from '../services/evolutionApi';
 
 interface WhatsAppQRModuleProps {
   technician: TechnicianProfile;
@@ -43,19 +44,22 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
   settings,
   onUpdateSettings,
 }) => {
-  // Session countdown timer for QR code validity (similar to WhatsApp Web 45s cycle)
-  const [countdown, setCountdown] = useState<number>(45);
-  const [qrToken, setQrToken] = useState<string>(() => `2@${Date.now()}_FT_${Math.random().toString(36).substring(2, 9)}`);
-  const [isGeneratingQR, setIsGeneratingQR] = useState<boolean>(false);
+  // Countdown timer for Baileys QR code freshness (standard 40s cycle)
+  const [countdown, setCountdown] = useState<number>(40);
+  const [qrBase64, setQrBase64] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isLoadingQR, setIsLoadingQR] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [showAdvancedConfig, setShowAdvancedConfig] = useState<boolean>(false);
   
   // Test message sending state
-  const [testPhone, setTestPhone] = useState<string>(technician.phone || '8331234567');
+  const [testPhone, setTestPhone] = useState<string>(technician.phone || '8331567890');
   const [testMessage, setTestMessage] = useState<string>(
     `❄️ ¡Hola! Esta es una prueba de vinculación exitosa desde FrescoTrack para ${technician.businessName}. Tu WhatsApp Business está conectado y listo para enviar alertas automáticas.`
   );
   const [isSendingTest, setIsSendingTest] = useState<boolean>(false);
   const [testSentSuccess, setTestSentSuccess] = useState<boolean>(false);
+  const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null);
 
   // Advanced Server Config state
   const resolvedServerUrl = (!settings.serverUrl || settings.serverUrl.includes('sslip.io') || settings.serverUrl.startsWith('http://'))
@@ -66,93 +70,224 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
     : settings.apiKey;
 
   const [serverUrl, setServerUrl] = useState<string>(resolvedServerUrl);
-  const [instanceName, setInstanceName] = useState<string>(settings.instanceName || `frescotrack-${technician.businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+  const [instanceName, setInstanceName] = useState<string>(settings.instanceName || 'frescotrack-climas');
   const [apiKey, setApiKey] = useState<string>(resolvedApiKey);
+
+  // Keep ref for polling to avoid closure stale state
+  const pollingRef = useRef<any>(null);
 
   useEffect(() => {
     setServerUrl(resolvedServerUrl);
     setApiKey(resolvedApiKey);
   }, [settings.serverUrl, settings.apiKey]);
 
-  // Countdown timer when waiting for scan
+  // Initial check: if already connected, verify connection state with Evolution API
   useEffect(() => {
-    let interval: any = null;
-    if (settings.status === 'qrcode') {
-      interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            // Auto refresh QR code token
-            setQrToken(`2@${Date.now()}_FT_${Math.random().toString(36).substring(2, 9)}`);
-            return 45;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    let isMounted = true;
+    if (settings.status === 'connected') {
+      getEvolutionConnectionState(serverUrl, instanceName, apiKey).then((res) => {
+        if (!isMounted) return;
+        if (res.state !== 'open') {
+          // If disconnected on server, update status
+          onUpdateSettings({
+            ...settings,
+            status: 'disconnected',
+            device: undefined,
+          });
+        }
+      });
     }
     return () => {
-      if (interval) clearInterval(interval);
+      isMounted = false;
     };
-  }, [settings.status]);
+  }, []);
 
-  // Handler to start linking process
-  const handleStartLinking = () => {
-    setIsGeneratingQR(true);
-    setCountdown(45);
-    setQrToken(`2@${Date.now()}_FT_${Math.random().toString(36).substring(2, 9)}`);
-    
-    // Simulate initial session handshake with Evolution API / Baileys
-    setTimeout(() => {
-      setIsGeneratingQR(false);
-      onUpdateSettings({
-        ...settings,
-        status: 'qrcode',
-      });
-    }, 800);
+  /**
+   * Fetch a real Baileys pairing QR code from Evolution API
+   */
+  const requestRealQrCode = async (isManualRefresh: boolean = false) => {
+    if (isManualRefresh) {
+      setIsLoadingQR(true);
+    }
+    setApiError(null);
+
+    try {
+      const res = await getEvolutionQrCode(serverUrl, instanceName, apiKey);
+
+      if (res.error) {
+        setApiError(res.error);
+        setIsLoadingQR(false);
+        return;
+      }
+
+      // If instance is already open/connected
+      if (res.state === 'open') {
+        const details = await getEvolutionInstanceDetails(serverUrl, instanceName, apiKey);
+        const device: WhatsAppDeviceInfo = {
+          phone: details?.number || technician.phone || '',
+          deviceName: details?.profileName || 'WhatsApp Business en Celular',
+          platform: 'android',
+          batteryPercentage: 100,
+          isCharging: true,
+          connectedAt: new Date().toISOString(),
+          lastSyncAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        onUpdateSettings({
+          ...settings,
+          status: 'connected',
+          device,
+          serverUrl,
+          instanceName,
+          apiKey,
+        });
+
+        triggerConfetti();
+        setIsLoadingQR(false);
+        return;
+      }
+
+      if (res.base64) {
+        setQrBase64(res.base64);
+      }
+      if (res.code) {
+        setQrCode(res.code);
+      }
+
+      setCountdown(40);
+      setIsLoadingQR(false);
+
+      if (settings.status !== 'qrcode') {
+        onUpdateSettings({
+          ...settings,
+          status: 'qrcode',
+          serverUrl,
+          instanceName,
+          apiKey,
+        });
+      }
+    } catch (err: any) {
+      setApiError(err.message || 'Error al conectar con Evolution API');
+      setIsLoadingQR(false);
+    }
   };
 
-  // Handler to simulate real successful pairing
-  const handleSimulateSuccessfulPairing = () => {
-    const mockDevice: WhatsAppDeviceInfo = {
-      phone: technician.phone || '8331234567',
-      deviceName: 'Samsung Galaxy S24 (WhatsApp Business)',
-      platform: 'android',
-      batteryPercentage: 91,
-      isCharging: true,
-      connectedAt: new Date().toISOString(),
-      lastSyncAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+  /**
+   * Start linking process by generating real QR from Evolution API
+   */
+  const handleStartLinking = async () => {
+    setIsLoadingQR(true);
+    await requestRealQrCode(true);
+  };
+
+  /**
+   * Poll Evolution API connection status every 3 seconds while in 'qrcode' state
+   */
+  useEffect(() => {
+    if (settings.status !== 'qrcode') {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      return;
+    }
+
+    // Interval for countdown and auto-refresh
+    const countdownTimer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // Refresh real QR code when expired
+          requestRealQrCode(false);
+          return 40;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Polling interval to check if WhatsApp scanned the QR code
+    pollingRef.current = setInterval(async () => {
+      try {
+        const stateRes = await getEvolutionConnectionState(serverUrl, instanceName, apiKey);
+
+        if (stateRes.state === 'open') {
+          // Cleared! Successfully paired
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+
+          const details = await getEvolutionInstanceDetails(serverUrl, instanceName, apiKey);
+          const device: WhatsAppDeviceInfo = {
+            phone: details?.number || technician.phone || '',
+            deviceName: details?.profileName || 'WhatsApp Business en Celular',
+            platform: 'android',
+            batteryPercentage: 100,
+            isCharging: true,
+            connectedAt: new Date().toISOString(),
+            lastSyncAt: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          };
+
+          onUpdateSettings({
+            ...settings,
+            status: 'connected',
+            device,
+            serverUrl,
+            instanceName,
+            apiKey,
+          });
+
+          triggerConfetti();
+        }
+      } catch (e) {
+        console.error('Error polling connection state', e);
+      }
+    }, 2500);
+
+    return () => {
+      clearInterval(countdownTimer);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     };
+  }, [settings.status, serverUrl, instanceName, apiKey]);
 
-    onUpdateSettings({
-      ...settings,
-      status: 'connected',
-      device: mockDevice,
-      serverUrl,
-      instanceName,
-      apiKey,
-    });
-
+  const triggerConfetti = () => {
     confetti({
-      particleCount: 80,
+      particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
       colors: ['#25D366', '#0284c7', '#ffffff'],
     });
   };
 
-  // Disconnect handler
-  const handleDisconnect = () => {
+  /**
+   * Real Disconnect handler calling Evolution API logout
+   */
+  const handleDisconnect = async () => {
     if (confirm('¿Estás seguro de desvincular este WhatsApp Business? Dejarán de enviarse los recordatorios automáticos.')) {
+      try {
+        await logoutEvolutionInstance(serverUrl, instanceName, apiKey);
+      } catch (e) {
+        console.error('Error logging out from Evolution API', e);
+      }
+
       onUpdateSettings({
         ...settings,
         status: 'disconnected',
         device: undefined,
       });
+      setQrBase64(null);
+      setQrCode(null);
       setTestSentSuccess(false);
+      setTestErrorMessage(null);
     }
   };
 
-  // Send Test Message
-  const handleSendTestMessage = () => {
+  /**
+   * Real Send Test Message using Evolution API
+   */
+  const handleSendTestMessage = async () => {
     if (!testPhone.trim()) {
       alert('Ingresa un número de teléfono de 10 dígitos.');
       return;
@@ -160,13 +295,24 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
 
     setIsSendingTest(true);
     setTestSentSuccess(false);
+    setTestErrorMessage(null);
 
-    // Simulate sending payload through Evolution API / Baileys WebSocket
-    setTimeout(() => {
-      setIsSendingTest(false);
+    const res = await sendEvolutionTextMessage(
+      serverUrl,
+      instanceName,
+      apiKey,
+      testPhone,
+      testMessage
+    );
+
+    setIsSendingTest(false);
+
+    if (res.success) {
       setTestSentSuccess(true);
-      setTimeout(() => setTestSentSuccess(false), 5000);
-    }, 1200);
+      setTimeout(() => setTestSentSuccess(false), 6000);
+    } else {
+      setTestErrorMessage(res.error || 'No se pudo enviar el mensaje. Verifica que tu WhatsApp siga vinculado.');
+    }
   };
 
   // Toggle automation rule
@@ -251,6 +397,25 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
         </div>
       </div>
 
+      {/* Global API Error Alert Banner */}
+      {apiError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start justify-between gap-3 text-xs animate-fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <strong className="font-bold block">Error al comunicar con Evolution API:</strong>
+              <p className="text-rose-700">{apiError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => requestRealQrCode(true)}
+            className="px-3 py-1.5 rounded-xl bg-rose-200 hover:bg-rose-300 text-rose-900 font-bold shrink-0 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {/* STATE 1: DISCONNECTED (Invitation to link) */}
       {settings.status === 'disconnected' && (
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-6 sm:p-8 border border-slate-700 shadow-lg text-center max-w-2xl mx-auto space-y-6">
@@ -270,13 +435,13 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
           <div className="pt-2">
             <button
               onClick={handleStartLinking}
-              disabled={isGeneratingQR}
-              className="py-3 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 mx-auto shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+              disabled={isLoadingQR}
+              className="py-3 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 mx-auto shadow-lg shadow-emerald-600/30 transition-all cursor-pointer disabled:opacity-70"
             >
-              {isGeneratingQR ? (
+              {isLoadingQR ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                  <span>Generando sesión en servidor...</span>
+                  <span>Conectando con Evolution API...</span>
                 </>
               ) : (
                 <>
@@ -309,29 +474,41 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             {/* The QR Box */}
             <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300">
-              <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 relative group">
-                <QRCodeSVG
-                  value={qrToken}
-                  size={200}
-                  level="M"
-                  includeMargin={true}
-                />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-10 h-10 rounded-full bg-white shadow-md p-1.5 flex items-center justify-center border border-slate-100">
-                    <span className="text-lg">❄️</span>
+              <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 relative group min-h-[224px] min-w-[224px] flex items-center justify-center">
+                {isLoadingQR ? (
+                  <div className="flex flex-col items-center justify-center p-8 space-y-2">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                    <span className="text-xs font-bold text-slate-500">Generando QR...</span>
                   </div>
-                </div>
+                ) : qrBase64 ? (
+                  <img
+                    src={qrBase64}
+                    alt="Código QR de Vinculación WhatsApp"
+                    className="w-[200px] h-[200px] object-contain rounded-xl select-none pointer-events-none"
+                  />
+                ) : qrCode ? (
+                  <QRCodeSVG
+                    value={qrCode}
+                    size={200}
+                    level="M"
+                    includeMargin={true}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 space-y-2">
+                    <AlertCircle className="w-8 h-8 text-amber-500" />
+                    <span className="text-xs font-bold text-slate-500">Esperando respuesta del servidor</span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    setCountdown(45);
-                    setQrToken(`2@${Date.now()}_FT_${Math.random().toString(36).substring(2, 9)}`);
-                  }}
-                  className="py-1.5 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  type="button"
+                  onClick={() => requestRealQrCode(true)}
+                  disabled={isLoadingQR}
+                  className="py-1.5 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingQR ? 'animate-spin' : ''}`} />
                   <span>Refrescar Código</span>
                 </button>
               </div>
@@ -391,24 +568,20 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                       Apunta la cámara al código QR
                     </strong>
                     <span className="text-[11px] text-slate-500">
-                      Tu celular vibrará y la vinculación quedará completada.
+                      Tu celular vibrará y la vinculación quedará completada en automático.
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Instant Simulator Button */}
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleSimulateSuccessfulPairing}
-                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 transition-all"
-                >
-                  <Sparkles className="w-4 h-4 text-emerald-200" />
-                  <span>Simular Escaneo Exitoso con mi Celular</span>
-                </button>
-                <p className="text-[10px] text-slate-400 text-center mt-1">
-                  Pulsa aquí para activar la vinculación y ver el panel funcionando en vivo
+              {/* Real-time Live Connection Poller Status */}
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-center gap-2.5 text-xs font-bold text-emerald-800 bg-emerald-50 py-3 px-4 rounded-2xl border border-emerald-200">
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+                  <span>Esperando escaneo con tu WhatsApp en vivo...</span>
+                </div>
+                <p className="text-[10px] text-slate-400 text-center mt-2">
+                  La pantalla cambiará de forma automática tan pronto tu celular escanee el código
                 </p>
               </div>
             </div>
@@ -432,7 +605,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                       {settings.device?.deviceName || 'WhatsApp Business en Celular'}
                     </h3>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      Activo
+                      En Línea
                     </span>
                   </div>
                   <p className="text-xs font-mono font-bold text-slate-600">
@@ -444,7 +617,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDisconnect}
-                  className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-colors border border-rose-200"
+                  className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-colors border border-rose-200 cursor-pointer"
                 >
                   <Power className="w-3.5 h-3.5" />
                   <span>Desvincular Dispositivo</span>
@@ -455,10 +628,10 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
             {/* Live Telemetry details */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Batería del Celular</span>
-                <div className="flex items-center gap-1.5 mt-1 font-bold text-slate-800">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Estado de Sesión</span>
+                <div className="flex items-center gap-1.5 mt-1 font-bold text-emerald-700">
                   <Battery className="w-4 h-4 text-emerald-600" />
-                  <span>{settings.device?.batteryPercentage || 91}% {settings.device?.isCharging ? '⚡ (Cargando)' : ''}</span>
+                  <span>Multi-Device Activo</span>
                 </div>
               </div>
 
@@ -466,7 +639,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 block uppercase">Conexión de Red</span>
                 <div className="flex items-center gap-1.5 mt-1 font-bold text-slate-800">
                   <Wifi className="w-4 h-4 text-sky-600" />
-                  <span>Wi-Fi Estable</span>
+                  <span>Socket Baileys Estable</span>
                 </div>
               </div>
 
@@ -474,7 +647,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 block uppercase">Última Sincronización</span>
                 <div className="flex items-center gap-1.5 mt-1 font-bold text-slate-800">
                   <Clock className="w-4 h-4 text-slate-600" />
-                  <span>{settings.device?.lastSyncAt || 'En línea'}</span>
+                  <span>{settings.device?.lastSyncAt || 'En vivo'}</span>
                 </div>
               </div>
 
@@ -531,7 +704,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                     type="button"
                     onClick={handleSendTestMessage}
                     disabled={isSendingTest}
-                    className="py-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shrink-0 shadow-md shadow-sky-600/20 transition-all cursor-pointer"
+                    className="py-2 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shrink-0 shadow-md shadow-sky-600/20 transition-all cursor-pointer disabled:opacity-60"
                   >
                     {isSendingTest ? (
                       <>
@@ -553,9 +726,18 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center justify-between animate-fade-in">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>¡Mensaje enviado con éxito desde tu WhatsApp Business! (Doble palomita azul ✓✓)</span>
+                  <span>¡Mensaje enviado con éxito a través de Evolution API! (Entregado al destinatario ✓✓)</span>
                 </div>
-                <span className="text-[10px] text-emerald-600 uppercase">Entregado</span>
+                <span className="text-[10px] text-emerald-600 uppercase">Enviado</span>
+              </div>
+            )}
+
+            {testErrorMessage && (
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800 flex items-center justify-between animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600" />
+                  <span>Error: {testErrorMessage}</span>
+                </div>
               </div>
             )}
           </div>
@@ -659,7 +841,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
         <button
           type="button"
           onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
-          className="w-full p-5 sm:p-6 text-left flex items-center justify-between hover:bg-slate-50 transition-colors"
+          className="w-full p-5 sm:p-6 text-left flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
             <Server className="w-5 h-5 text-indigo-600" />
@@ -703,7 +885,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                   type="text"
                   value={instanceName}
                   onChange={(e) => setInstanceName(e.target.value)}
-                  placeholder="frescotrack-app"
+                  placeholder="frescotrack-climas"
                   className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900"
                 />
               </div>
@@ -717,7 +899,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="429683C4C977415CAAFCCE10F7D57E11"
+                placeholder="ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ=="
                 className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
@@ -727,7 +909,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
               <div className="space-y-1">
                 <strong className="font-bold">Despliegue en Dokploy (panel.korensmx.com):</strong>
                 <p className="text-indigo-800">
-                  Evolution API corre como un contenedor Docker en tu mismo VPS de Dokploy bajo el puerto 8080 con SQLite o PostgreSQL. Maneja sesiones multi-instancia de WhatsApp Web de forma aislada para cada micro-app.
+                  Evolution API corre como un contenedor Docker en tu mismo VPS de Dokploy bajo el puerto 8080 con PostgreSQL y Redis. Maneja sesiones multi-instancia de WhatsApp Web de forma aislada para cada micro-app.
                 </p>
               </div>
             </div>
@@ -735,7 +917,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-colors"
+                className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-colors cursor-pointer"
               >
                 Guardar Configuración de Servidor
               </button>

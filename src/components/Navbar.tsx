@@ -1,6 +1,7 @@
 import React from 'react';
-import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Flame, Layers, Globe } from 'lucide-react';
+import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Layers, Globe } from 'lucide-react';
 import type { TechnicianProfile } from '../types';
+import { WeatherBanner } from './WeatherBanner';
 
 interface NavbarProps {
   technician: TechnicianProfile;
@@ -21,23 +22,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs no-print">
-      {/* Tampico Weather & Extreme Heat Banner */}
-      <div className="bg-gradient-to-r from-sky-700 via-sky-600 to-cyan-600 text-white px-3 py-1.5 text-xs font-medium flex items-center justify-between">
-        <div className="flex items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap">
-          <span className="flex h-2 w-2 relative shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300"></span>
-          </span>
-          <Flame className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-          <span className="font-semibold text-amber-200">Zona Golfo (Tampico / Madero):</span>
-          <span>36°C · Sensación térmica 43°C · Temporada alta</span>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 text-sky-100 text-[11px] shrink-0">
-          <span>{technician.businessName}</span>
-          <span className="text-sky-300">|</span>
-          <span className="font-bold text-white">{technician.name}</span>
-        </div>
-      </div>
+      {/* Live Online Weather & Geolocation Banner */}
+      <WeatherBanner
+        preferredCity={technician.city}
+        technicianBusinessName={technician.businessName}
+        technicianName={technician.name}
+      />
 
       <div className="max-w-6xl mx-auto px-4 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         {/* Brand & Logo */}

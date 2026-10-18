@@ -30,6 +30,7 @@ import type {
 } from '../types';
 import { calculateEquipmentServicePrice } from '../utils/pricing';
 import { formatDisplayPhone, createWhatsAppUrl } from '../utils/whatsapp';
+import { WeatherBanner } from './WeatherBanner';
 
 interface PublicBusinessWebsiteProps {
   technician: TechnicianProfile;
@@ -98,23 +99,13 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       
-      {/* Top Banner with Temperature & Call to Action */}
-      <div className="bg-gradient-to-r from-sky-700 via-sky-600 to-cyan-600 text-white px-4 py-2 text-xs font-medium flex items-center justify-between">
-        <div className="flex items-center gap-2 max-w-full overflow-hidden truncate">
-          <Flame className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-          <span className="font-semibold text-amber-200">Zona Conurbada:</span>
-          <span className="truncate">Tampico, Cd. Madero y Altamira · Servicios el mismo día</span>
-        </div>
-        
-        <button
-          onClick={onSwitchToAdmin}
-          className="text-xs font-bold text-sky-100 hover:text-white flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition-colors shrink-0"
-        >
-          <Lock className="w-3 h-3" />
-          <span className="hidden sm:inline">Panel del Técnico</span>
-          <span className="sm:hidden">Acceso</span>
-        </button>
-      </div>
+      {/* Live Online Weather & Geolocation Banner */}
+      <WeatherBanner
+        preferredCity={technician.city}
+        onSwitchView={onSwitchToAdmin}
+        switchViewLabel="Panel del Técnico"
+        switchViewIcon={<Lock className="w-3 h-3" />}
+      />
 
       {/* Main Header / Navigation */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">

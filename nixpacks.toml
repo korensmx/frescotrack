@@ -1,9 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "caddy"]
+nixPkgs = ["nodejs_22"]
 
 [phases.build]
 cmds = [
   "npm run build",
-  "cp Caddyfile /assets/Caddyfile 2>/dev/null || true",
-  "caddy fmt --overwrite /assets/Caddyfile 2>/dev/null || true"
+  "cp Caddyfile /assets/Caddyfile || true"
 ]

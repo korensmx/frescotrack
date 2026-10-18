@@ -58,7 +58,7 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
   const [testSentSuccess, setTestSentSuccess] = useState<boolean>(false);
 
   // Advanced Server Config state
-  const [serverUrl, setServerUrl] = useState<string>(settings.serverUrl || 'https://evolution.korensmx.com');
+  const [serverUrl, setServerUrl] = useState<string>(settings.serverUrl || 'http://frescotrack-evolutionapi-90ae9e-95-111-239-97.sslip.io');
   const [instanceName, setInstanceName] = useState<string>(settings.instanceName || `frescotrack-${technician.businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
   const [apiKey, setApiKey] = useState<string>(settings.apiKey || 'ft_live_korens_833_sec');
 

@@ -129,7 +129,7 @@ export const DEFAULT_WHATSAPP_SETTINGS: WhatsAppIntegrationSettings = {
   autoSendHour: 9,
   notifyOnCustomerIssueReport: true,
   sendWelcomeOnNewEquipment: true,
-  serverUrl: 'https://evolution.korensmx.com',
+  serverUrl: 'http://frescotrack-evolutionapi-90ae9e-95-111-239-97.sslip.io',
   instanceName: 'frescotrack-climas',
 };
 

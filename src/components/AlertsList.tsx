@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Filter, AlertTriangle, Clock, CheckCircle2, ListFilter, X, PlusCircle } from 'lucide-react';
 import { Equipment, TechnicianProfile, ContactStatus } from '../types';
 import { EquipmentCard } from './EquipmentCard';
-import { getEquipmentServiceStatus } from '../utils/dates';
+import { getEquipmentMetaIndex } from '../utils/indexing';
 
 interface AlertsListProps {
   equipments: Equipment[];
@@ -27,53 +27,21 @@ export const AlertsList: React.FC<AlertsListProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Counts for each filter tab
-  const counts = useMemo(() => {
-    let overdue = 0;
-    let upcoming = 0;
-    let ok = 0;
+  // O(1) Cached Meta Index instance
+  const index = useMemo(() => getEquipmentMetaIndex(equipments), [equipments]);
 
-    equipments.forEach((eq) => {
-      const { status } = getEquipmentServiceStatus(eq);
-      if (status === 'overdue') overdue++;
-      else if (status === 'upcoming') upcoming++;
-      else ok++;
-    });
+  // Counts for each filter tab directly from pre-computed metrics (O(1))
+  const counts = {
+    overdue: index.metrics.overdueCount,
+    upcoming: index.metrics.upcomingCount,
+    ok: index.metrics.okCount,
+    all: index.metrics.totalCount,
+  };
 
-    return { overdue, upcoming, ok, all: equipments.length };
-  }, [equipments]);
-
-  // Filter and sort items
+  // Ultra-fast sub-millisecond query using inverted token matching
   const filteredEquipments = useMemo(() => {
-    return equipments
-      .filter((eq) => {
-        // Tab filter
-        const { status } = getEquipmentServiceStatus(eq);
-        if (activeFilter === 'overdue' && status !== 'overdue') return false;
-        if (activeFilter === 'upcoming' && status !== 'upcoming') return false;
-        if (activeFilter === 'ok' && status !== 'ok') return false;
-
-        // Search filter
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchName = eq.clientName.toLowerCase().includes(q);
-          const matchColonia = eq.clientColonia.toLowerCase().includes(q);
-          const matchFolio = eq.qrId.toLowerCase().includes(q);
-          const matchBrand = eq.brand.toLowerCase().includes(q);
-          const matchPhone = eq.clientPhone.includes(q);
-          const matchLocation = eq.location.toLowerCase().includes(q);
-          return matchName || matchColonia || matchFolio || matchBrand || matchPhone || matchLocation;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        // Sort: overdue with most days overdue first, then upcoming, then ok
-        const statusA = getEquipmentServiceStatus(a);
-        const statusB = getEquipmentServiceStatus(b);
-        return statusB.daysDiff - statusA.daysDiff;
-      });
-  }, [equipments, activeFilter, searchQuery]);
+    return index.query(activeFilter, searchQuery);
+  }, [index, activeFilter, searchQuery]);
 
   return (
     <section className="space-y-4">

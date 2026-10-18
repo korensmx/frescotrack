@@ -1,4 +1,5 @@
 import { Equipment, EquipmentStatus } from '../types';
+import { equipmentStatusCache, getEquipmentStatusCacheKey } from './cache';
 
 /**
  * Format a date string YYYY-MM-DD to Mexican Spanish locale
@@ -57,7 +58,8 @@ export function getDaysDiffFromToday(targetDate: Date): number {
 }
 
 /**
- * Computes status and humanized overdue/due label for an equipment
+ * Computes status and humanized overdue/due label for an equipment.
+ * Cached in memory to avoid parsing ISO dates multiple times per render.
  */
 export function getEquipmentServiceStatus(equipment: Equipment): {
   status: EquipmentStatus;
@@ -66,8 +68,23 @@ export function getEquipmentServiceStatus(equipment: Equipment): {
   statusLabel: string;
   badgeClass: string;
 } {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const cacheKey = getEquipmentStatusCacheKey(equipment, todayStr);
+  const cached = equipmentStatusCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const nextDueDate = getNextDueDate(equipment.lastServiceDate, equipment.reminderIntervalMonths);
   const daysDiff = getDaysDiffFromToday(nextDueDate);
+
+  let result: {
+    status: EquipmentStatus;
+    daysDiff: number;
+    nextDueDate: Date;
+    statusLabel: string;
+    badgeClass: string;
+  };
 
   if (daysDiff > 0) {
     let statusLabel = `Vencido hace ${daysDiff} día${daysDiff === 1 ? '' : 's'}`;
@@ -78,7 +95,7 @@ export function getEquipmentServiceStatus(equipment: Equipment): {
         ? `Vencido hace ${months} mes${months > 1 ? 'es' : ''} y ${remainingDays} d.`
         : `Vencido hace ${months} mes${months > 1 ? 'es' : ''}`;
     }
-    return {
+    result = {
       status: 'overdue',
       daysDiff,
       nextDueDate,
@@ -87,7 +104,7 @@ export function getEquipmentServiceStatus(equipment: Equipment): {
     };
   } else if (daysDiff >= -7) {
     const daysLeft = Math.abs(daysDiff);
-    return {
+    result = {
       status: 'upcoming',
       daysDiff,
       nextDueDate,
@@ -96,7 +113,7 @@ export function getEquipmentServiceStatus(equipment: Equipment): {
     };
   } else {
     const daysLeft = Math.abs(daysDiff);
-    return {
+    result = {
       status: 'ok',
       daysDiff,
       nextDueDate,
@@ -104,6 +121,9 @@ export function getEquipmentServiceStatus(equipment: Equipment): {
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300'
     };
   }
+
+  equipmentStatusCache.set(cacheKey, result);
+  return result;
 }
 
 /**

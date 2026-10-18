@@ -27,7 +27,7 @@ import {
   resetToSeedData,
   renewEquipmentService
 } from './utils/storage';
-import { getEquipmentServiceStatus } from './utils/dates';
+import { getEquipmentMetaIndex, invalidateEquipmentIndex } from './utils/indexing';
 import { Wrench, Printer, QrCode, Settings, Plus, Layers } from 'lucide-react';
 
 export function App() {
@@ -96,26 +96,26 @@ export function App() {
     }
 
     if (targetFolio) {
-      const match = equipments.find((eq) => eq.qrId.toUpperCase() === targetFolio);
+      const index = getEquipmentMetaIndex(equipments);
+      const match = index.findByFolio(targetFolio);
       if (match) {
         setPublicViewEquipment(match);
       }
     }
   }, [equipments, tenants]);
 
-  // Overdue count for notifications
-  const overdueCount = equipments.filter((eq) => {
-    const { status } = getEquipmentServiceStatus(eq);
-    return status === 'overdue';
-  }).length;
+  // Overdue count for notifications in O(1) from meta index
+  const overdueCount = getEquipmentMetaIndex(equipments).metrics.overdueCount;
 
   // Handlers
   const handleAddEquipment = (newEquipment: Equipment) => {
+    invalidateEquipmentIndex();
     const updated = [newEquipment, ...equipments];
     setEquipments(updated);
   };
 
   const handleUpdateContactStatus = (equipmentId: string, status: ContactStatus) => {
+    invalidateEquipmentIndex();
     const updated = equipments.map((eq) => {
       if (eq.id === equipmentId) {
         return {
@@ -140,11 +140,13 @@ export function App() {
       technicianName: string;
     }
   ) => {
+    invalidateEquipmentIndex();
     const updated = renewEquipmentService(equipments, equipmentId, serviceData);
     setEquipments(updated);
   };
 
   const handleResetSeedData = () => {
+    invalidateEquipmentIndex();
     const reset = resetToSeedData();
     setEquipments(reset.equipments);
     setTechnician(reset.technician);

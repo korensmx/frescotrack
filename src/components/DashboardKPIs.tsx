@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, DollarSign, Snowflake, CheckCircle2, MessageSquare, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Equipment } from '../types';
-import { getEquipmentServiceStatus } from '../utils/dates';
+import { getEquipmentMetaIndex } from '../utils/indexing';
 
 interface DashboardKPIsProps {
   equipments: Equipment[];
@@ -12,36 +12,18 @@ export const DashboardKPIs: React.FC<DashboardKPIsProps> = ({
   equipments,
   onFilterClick,
 }) => {
-  // Compute metrics
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  // O(1) Precomputed Metrics from Meta Index
+  const index = getEquipmentMetaIndex(equipments);
+  const {
+    overdueCount,
+    upcomingCount,
+    potentialRevenue,
+    contactedCount,
+    servicesThisMonthCount,
+    revenueThisMonth,
+  } = index.metrics;
 
-  let overdueOrUpcomingCount = 0;
-  let potentialRevenue = 0;
-  let servicesThisMonthCount = 0;
-  let revenueThisMonth = 0;
-  let contactedCount = 0;
-
-  equipments.forEach((eq) => {
-    const { status } = getEquipmentServiceStatus(eq);
-    if (status === 'overdue' || status === 'upcoming') {
-      overdueOrUpcomingCount++;
-      potentialRevenue += eq.suggestedPrice;
-      if (eq.contactedStatus === 'contacted' || eq.contactedStatus === 'scheduled') {
-        contactedCount++;
-      }
-    }
-
-    // Check services history for this month
-    eq.servicesHistory.forEach((srv) => {
-      const srvDate = new Date(srv.date);
-      if (srvDate.getMonth() === currentMonth && srvDate.getFullYear() === currentYear) {
-        servicesThisMonthCount++;
-        revenueThisMonth += srv.cost;
-      }
-    });
-  });
+  const overdueOrUpcomingCount = overdueCount + upcomingCount;
 
   return (
     <section className="space-y-3">

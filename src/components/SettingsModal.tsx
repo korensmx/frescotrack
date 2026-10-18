@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import type { TechnicianProfile, PricingMatrix, ApplianceType, VoltageType, SystemType, CapacityType } from '../types';
 import { calculateEquipmentServicePrice, DEFAULT_PRICING_MATRIX } from '../utils/pricing';
+import { compressImageAsync } from '../utils/asyncTasks';
+import { invalidatePricingCache } from '../utils/cache';
 
 interface SettingsModalProps {
   technician: TechnicianProfile;
@@ -48,22 +50,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [testCapacity, setTestCapacity] = useState<CapacityType>('1.5 Ton');
 
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
 
-  // Handle Logo Upload (Converts to Data URL)
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Logo Upload (Asynchronously compressed to 400x400 WebP/JPEG)
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Por favor selecciona una imagen menor a 2MB');
-        return;
+      try {
+        setIsProcessingLogo(true);
+        const optimized = await compressImageAsync(file, 400, 400, 0.85);
+        setLogoUrl(optimized);
+      } catch (err) {
+        console.error('Error optimizando logo', err);
+        alert('No se pudo procesar la imagen seleccionada.');
+      } finally {
+        setIsProcessingLogo(false);
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setLogoUrl(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -79,6 +81,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    invalidatePricingCache();
     onSaveTechnician({
       ...technician,
       name: name.trim(),

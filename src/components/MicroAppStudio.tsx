@@ -22,6 +22,7 @@ import {
 import type { BusinessTenant, TechnicianProfile, PricingMatrix } from '../types';
 import { DEFAULT_PRICING_MATRIX } from '../utils/pricing';
 import { formatDisplayPhone } from '../utils/whatsapp';
+import { compressImageAsync } from '../utils/asyncTasks';
 import confetti from 'canvas-confetti';
 
 interface MicroAppStudioProps {
@@ -55,6 +56,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
   const [customDomain, setCustomDomain] = useState('');
   const [baseMinisplit, setBaseMinisplit] = useState(700);
   const [baseVentana, setBaseVentana] = useState(550);
+  const [isCompressingLogo, setIsCompressingLogo] = useState(false);
 
   // Auto-slugify when businessName changes
   const handleBusinessNameChange = (val: string) => {
@@ -69,9 +71,16 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
     setCustomDomain(`${generated || 'app'}.versel.app`);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
+      setIsCompressingLogo(true);
+      const compressedDataUrl = await compressImageAsync(file, 400, 400, 0.85);
+      setLogoUrl(compressedDataUrl);
+    } catch (err) {
+      console.warn('Compresión asíncrona falló, recurriendo a FileReader:', err);
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -79,6 +88,8 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsCompressingLogo(false);
     }
   };
 
@@ -475,16 +486,25 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                   Logotipo del Negocio:
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                    {logoUrl ? (
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 relative">
+                    {isCompressingLogo ? (
+                      <RefreshCw className="w-5 h-5 text-sky-600 animate-spin" />
+                    ) : logoUrl ? (
                       <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" />
                     ) : (
                       <span className="text-lg">❄️</span>
                     )}
                   </div>
-                  <label className="cursor-pointer py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors">
-                    <span>Seleccionar Imagen</span>
-                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  <label className="cursor-pointer py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
+                    {isCompressingLogo ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-600" />
+                        <span>Comprimiendo...</span>
+                      </>
+                    ) : (
+                      <span>Seleccionar Imagen</span>
+                    )}
+                    <input type="file" accept="image/*" disabled={isCompressingLogo} onChange={handleLogoUpload} className="hidden" />
                   </label>
                 </div>
               </div>

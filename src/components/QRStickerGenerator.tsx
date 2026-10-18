@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { Printer, QrCode, Sparkles, RefreshCw, Layers, Check, Download, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Printer, QrCode, Sparkles, RefreshCw, Layers, Check, Download, ShieldCheck, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Equipment, TechnicianProfile } from '../types';
 import { formatDisplayPhone } from '../utils/whatsapp';
+import { processArrayAsync } from '../utils/asyncTasks';
+
+interface StickerItem {
+  folio: string;
+  url: string;
+  isRegistered: boolean;
+  equipment?: Equipment;
+}
 
 interface QRStickerGeneratorProps {
   technician: TechnicianProfile;
@@ -18,17 +26,48 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
   const [batchMode, setBatchMode] = useState<'new_batch' | 'registered'>('new_batch');
   const [batchCount, setBatchCount] = useState<number>(12);
   const [startFolioNum, setStartFolioNum] = useState<number>(101);
+  const [stickers, setStickers] = useState<StickerItem[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Generate batch of folios for blank pre-printed stickers
-  const generatedStickers = Array.from({ length: batchCount }, (_, i) => {
-    const num = startFolioNum + i;
-    const folio = `FT-${String(num).padStart(4, '0')}`;
-    return {
-      folio,
-      url: `${window.location.origin}/equipo/${folio}`,
-      isRegistered: false,
+  // Generate batch asynchronously to never block main thread / UI rendering
+  useEffect(() => {
+    let isMounted = true;
+    setIsGenerating(true);
+
+    type RawStickerItem = { folio: string; isRegistered: boolean; equipment?: Equipment };
+
+    const rawItems: RawStickerItem[] = batchMode === 'new_batch'
+      ? Array.from({ length: batchCount }, (_, i) => ({
+          folio: `FT-${String(startFolioNum + i).padStart(4, '0')}`,
+          isRegistered: false,
+          equipment: undefined,
+        }))
+      : equipments.slice(0, batchCount).map((eq) => ({
+          folio: eq.qrId,
+          isRegistered: true,
+          equipment: eq,
+        }));
+
+    processArrayAsync<RawStickerItem, StickerItem>(
+      rawItems,
+      6,
+      (item: RawStickerItem) => ({
+        folio: item.folio,
+        url: `${window.location.origin}/equipo/${item.folio}`,
+        isRegistered: item.isRegistered,
+        equipment: item.equipment,
+      })
+    ).then((results: StickerItem[]) => {
+      if (isMounted) {
+        setStickers(results);
+        setIsGenerating(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
     };
-  });
+  }, [batchMode, batchCount, startFolioNum, equipments]);
 
   const handlePrint = () => {
     window.print();
@@ -65,7 +104,7 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
               className="w-full sm:w-auto py-2.5 px-5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md shadow-sky-600/25 transition-all"
             >
               <Printer className="w-4 h-4 stroke-[2.5]" />
-              <span>Imprimir Plantilla (12 Stickers)</span>
+              <span>Imprimir Plantilla ({batchCount} Stickers)</span>
             </button>
           </div>
         </div>
@@ -180,71 +219,79 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
         </div>
 
         {/* Sticker Grid (Formatted for standard Letter / Sticker adhesive sheet: 2 cols on mobile, 3 or 4 on desktop/print) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 gap-4">
-          {(batchMode === 'new_batch' ? generatedStickers : equipments.slice(0, batchCount)).map((item, idx) => {
-            const folio = 'qrId' in item ? item.qrId : item.folio;
-            const targetUrl = `${window.location.origin}/equipo/${folio}`;
-            const eqData = 'brand' in item ? (item as Equipment) : null;
+        {isGenerating && stickers.length === 0 ? (
+          <div className="py-16 text-center space-y-3">
+            <Loader2 className="w-8 h-8 text-sky-600 animate-spin mx-auto" />
+            <p className="text-sm font-bold text-slate-700">Generando lote de etiquetas en segundo plano...</p>
+            <p className="text-xs text-slate-500">Optimizando folios y códigos QR sin bloquear el navegador</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 gap-4">
+            {stickers.map((item, idx) => {
+              const folio = item.folio;
+              const targetUrl = item.url;
+              const eqData = item.equipment;
 
-            return (
-              <div
-                key={folio || idx}
-                className="relative bg-white border-2 border-dashed border-slate-300 rounded-2xl p-3.5 flex flex-col justify-between hover:border-sky-500 transition-colors shadow-2xs"
-                style={{ breakInside: 'avoid' }}
-              >
-                {/* Sticker Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm">❄️</span>
-                    <span className="font-black text-xs text-slate-900 tracking-tight">
-                      FRESCOTRACK
+              return (
+                <div
+                  key={folio || idx}
+                  className="relative bg-white border-2 border-dashed border-slate-300 rounded-2xl p-3.5 flex flex-col justify-between hover:border-sky-500 transition-colors shadow-2xs"
+                  style={{ breakInside: 'avoid' }}
+                >
+                  {/* Sticker Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm">❄️</span>
+                      <span className="font-black text-xs text-slate-900 tracking-tight">
+                        FRESCOTRACK
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                      {folio}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white">
-                    {folio}
-                  </span>
-                </div>
 
-                {/* Main QR Code & Message */}
-                <div className="my-2.5 flex items-center gap-3">
-                  <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-2xs shrink-0">
-                    <QRCodeSVG
-                      value={targetUrl}
-                      size={82}
-                      level="M"
-                      includeMargin={false}
-                    />
+                  {/* Main QR Code & Message */}
+                  <div className="my-2.5 flex items-center gap-3">
+                    <div className="bg-white p-1 rounded-lg border border-slate-200 shadow-2xs shrink-0">
+                      <QRCodeSVG
+                        value={targetUrl}
+                        size={82}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black text-slate-800 leading-tight">
+                        Escanea para garantía y soporte de tu clima
+                      </p>
+                      <p className="text-[10px] text-slate-600 font-medium">
+                        {technician.businessName}
+                      </p>
+                      <p className="text-[9px] text-sky-700 font-bold">
+                        WhatsApp: {formatDisplayPhone(technician.phone)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black text-slate-800 leading-tight">
-                      Escanea para garantía y soporte de tu clima
-                    </p>
-                    <p className="text-[10px] text-slate-600 font-medium">
-                      {technician.businessName}
-                    </p>
-                    <p className="text-[9px] text-sky-700 font-bold">
-                      WhatsApp: {formatDisplayPhone(technician.phone)}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Sticker Footer Notice */}
-                <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-[9px] text-slate-400 font-semibold">
-                  {eqData ? (
-                    <span className="truncate max-w-[170px] text-slate-700">
-                      {eqData.clientName} ({eqData.brand})
+                  {/* Sticker Footer Notice */}
+                  <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-[9px] text-slate-400 font-semibold">
+                    {eqData ? (
+                      <span className="truncate max-w-[170px] text-slate-700">
+                        {eqData.clientName} ({eqData.brand})
+                      </span>
+                    ) : (
+                      <span>Pega en carcasa del clima</span>
+                    )}
+                    <span className="text-[8px] uppercase tracking-wider text-slate-400">
+                      Tampico
                     </span>
-                  ) : (
-                    <span>Pega en carcasa del clima</span>
-                  )}
-                  <span className="text-[8px] uppercase tracking-wider text-slate-400">
-                    Tampico
-                  </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Footer print note */}
         <div className="mt-6 pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400 font-medium">

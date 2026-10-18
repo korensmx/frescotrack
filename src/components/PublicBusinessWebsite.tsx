@@ -31,6 +31,7 @@ import type {
 import { calculateEquipmentServicePrice } from '../utils/pricing';
 import { formatDisplayPhone, createWhatsAppUrl } from '../utils/whatsapp';
 import { WeatherBanner } from './WeatherBanner';
+import { getEquipmentMetaIndex } from '../utils/indexing';
 
 interface PublicBusinessWebsiteProps {
   technician: TechnicianProfile;
@@ -84,7 +85,8 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
     const clean = searchFolio.trim().toUpperCase();
     if (!clean) return;
 
-    const found = equipments.find((eq) => eq.qrId.toUpperCase() === clean);
+    const index = getEquipmentMetaIndex(equipments);
+    const found = index.findByFolio(clean);
     if (found) {
       setSearchError('');
       onOpenEquipmentQR(found);

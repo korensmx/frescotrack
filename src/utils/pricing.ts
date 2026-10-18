@@ -1,4 +1,5 @@
 import { ApplianceType, VoltageType, SystemType, CapacityType, PricingMatrix } from '../types';
+import { pricingCalculationCache, getPricingCacheKey } from './cache';
 
 export const DEFAULT_PRICING_MATRIX: PricingMatrix = {
   baseMinisplit: 700,
@@ -22,6 +23,7 @@ export const DEFAULT_PRICING_MATRIX: PricingMatrix = {
 /**
  * Calculates dynamic service price based on multidimensional specs:
  * Appliance (Ventana vs Minisplit) + Voltage (110V vs 220V) + System (Inverter vs Normal) + Tonnage (0.5 to 3 Tn)
+ * Cached with O(1) retrieval for repeated inquiries.
  */
 export function calculateEquipmentServicePrice(
   specs: {
@@ -33,6 +35,11 @@ export function calculateEquipmentServicePrice(
   },
   matrix: PricingMatrix = DEFAULT_PRICING_MATRIX
 ): number {
+  const cacheKey = getPricingCacheKey(specs, matrix);
+  const cached = pricingCalculationCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
   // 1. Base by appliance type
   let price = specs.applianceType === 'Clima de Ventana' 
     ? matrix.baseVentana 
@@ -62,5 +69,7 @@ export function calculateEquipmentServicePrice(
   }
 
   // Round to nearest 50 for clean Mexican technician billing
-  return Math.round(price / 50) * 50;
+  const finalPrice = Math.round(price / 50) * 50;
+  pricingCalculationCache.set(cacheKey, finalPrice);
+  return finalPrice;
 }

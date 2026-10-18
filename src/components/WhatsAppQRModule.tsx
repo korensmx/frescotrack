@@ -58,9 +58,21 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
   const [testSentSuccess, setTestSentSuccess] = useState<boolean>(false);
 
   // Advanced Server Config state
-  const [serverUrl, setServerUrl] = useState<string>(settings.serverUrl || 'https://evolution.korensmx.com');
+  const resolvedServerUrl = (!settings.serverUrl || settings.serverUrl.includes('sslip.io') || settings.serverUrl.startsWith('http://'))
+    ? 'https://evolution.korensmx.com'
+    : settings.serverUrl;
+  const resolvedApiKey = (!settings.apiKey || settings.apiKey === 'ft_live_korens_833_sec')
+    ? 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ=='
+    : settings.apiKey;
+
+  const [serverUrl, setServerUrl] = useState<string>(resolvedServerUrl);
   const [instanceName, setInstanceName] = useState<string>(settings.instanceName || `frescotrack-${technician.businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
-  const [apiKey, setApiKey] = useState<string>(settings.apiKey || 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==');
+  const [apiKey, setApiKey] = useState<string>(resolvedApiKey);
+
+  useEffect(() => {
+    setServerUrl(resolvedServerUrl);
+    setApiKey(resolvedApiKey);
+  }, [settings.serverUrl, settings.apiKey]);
 
   // Countdown timer when waiting for scan
   useEffect(() => {

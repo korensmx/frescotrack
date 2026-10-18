@@ -139,6 +139,13 @@ export function loadStoredWhatsAppSettings(): WhatsAppIntegrationSettings {
     const data = localStorage.getItem(STORAGE_WHATSAPP_KEY);
     if (data) {
       const parsed = JSON.parse(data);
+      // Auto-migrate legacy sslip.io or unencrypted http URLs to production evolution.korensmx.com
+      if (!parsed.serverUrl || parsed.serverUrl.includes('sslip.io') || parsed.serverUrl.startsWith('http://')) {
+        parsed.serverUrl = DEFAULT_WHATSAPP_SETTINGS.serverUrl;
+      }
+      if (!parsed.apiKey || parsed.apiKey === 'ft_live_korens_833_sec') {
+        parsed.apiKey = DEFAULT_WHATSAPP_SETTINGS.apiKey;
+      }
       return { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed };
     }
   } catch (e) {

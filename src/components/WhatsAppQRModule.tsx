@@ -58,9 +58,9 @@ export const WhatsAppQRModule: React.FC<WhatsAppQRModuleProps> = ({
   const [testSentSuccess, setTestSentSuccess] = useState<boolean>(false);
 
   // Advanced Server Config state
-  const [serverUrl, setServerUrl] = useState<string>(settings.serverUrl || 'http://frescotrack-evolutionapi-90ae9e-95-111-239-97.sslip.io');
+  const [serverUrl, setServerUrl] = useState<string>(settings.serverUrl || 'https://evolution.korensmx.com');
   const [instanceName, setInstanceName] = useState<string>(settings.instanceName || `frescotrack-${technician.businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
-  const [apiKey, setApiKey] = useState<string>(settings.apiKey || 'ft_live_korens_833_sec');
+  const [apiKey, setApiKey] = useState<string>(settings.apiKey || 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==');
 
   // Countdown timer when waiting for scan
   useEffect(() => {

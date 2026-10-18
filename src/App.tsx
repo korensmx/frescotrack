@@ -10,12 +10,14 @@ import { SettingsModal } from './components/SettingsModal';
 import { QRScannerModal } from './components/QRScannerModal';
 import { MicroAppStudio } from './components/MicroAppStudio';
 import { PublicBusinessWebsite } from './components/PublicBusinessWebsite';
+import { WhatsAppQRModule } from './components/WhatsAppQRModule';
 import type { 
   Equipment, 
   TechnicianProfile, 
   ContactStatus, 
   ServiceType,
-  BusinessTenant
+  BusinessTenant,
+  WhatsAppIntegrationSettings
 } from './types';
 import { 
   loadStoredEquipments, 
@@ -24,20 +26,23 @@ import {
   saveStoredTechnician, 
   loadStoredTenants,
   saveStoredTenants,
+  loadStoredWhatsAppSettings,
+  saveStoredWhatsAppSettings,
   resetToSeedData,
   renewEquipmentService
 } from './utils/storage';
 import { getEquipmentMetaIndex, invalidateEquipmentIndex } from './utils/indexing';
-import { Wrench, Printer, QrCode, Settings, Plus, Layers } from 'lucide-react';
+import { Wrench, Printer, QrCode, Settings, Plus, Layers, Smartphone } from 'lucide-react';
 
 export function App() {
   // State
   const [equipments, setEquipments] = useState<Equipment[]>(() => loadStoredEquipments());
   const [technician, setTechnician] = useState<TechnicianProfile>(() => loadStoredTechnician());
   const [tenants, setTenants] = useState<BusinessTenant[]>(() => loadStoredTenants());
+  const [whatsAppSettings, setWhatsAppSettings] = useState<WhatsAppIntegrationSettings>(() => loadStoredWhatsAppSettings());
   
   const [viewMode, setViewMode] = useState<'admin' | 'public'>('admin');
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio'>('dashboard');
   const [activeFilter, setActiveFilter] = useState<'overdue' | 'upcoming' | 'ok' | 'all'>('overdue');
 
   // Modals state
@@ -57,6 +62,10 @@ export function App() {
   useEffect(() => {
     saveStoredTenants(tenants);
   }, [tenants]);
+
+  useEffect(() => {
+    saveStoredWhatsAppSettings(whatsAppSettings);
+  }, [whatsAppSettings]);
 
   // Support direct QR URL routing: e.g. /equipo/FT-0041 or ?folio=FT-0041
   useEffect(() => {
@@ -229,6 +238,7 @@ export function App() {
         onOpenRegister={() => setIsRegisterOpen(true)}
         onViewPublicWebsite={() => setViewMode('public')}
         overdueCount={overdueCount}
+        isWhatsAppConnected={whatsAppSettings.status === 'connected'}
       />
 
       {/* Main View Area */}
@@ -244,6 +254,8 @@ export function App() {
                 if (filter === 'overdue') setActiveFilter('overdue');
                 else setActiveFilter('all');
               }}
+              isWhatsAppConnected={whatsAppSettings.status === 'connected'}
+              onOpenWhatsAppTab={() => setCurrentTab('whatsapp')}
             />
 
             {/* List of Today's Preventive Maintenance Alerts */}
@@ -296,6 +308,17 @@ export function App() {
                 handleSelectTenant(tenant);
                 setViewMode('public');
               }}
+            />
+          </div>
+        )}
+
+        {/* WHATSAPP QR INTEGRATION TAB */}
+        {currentTab === 'whatsapp' && (
+          <div className="animate-in fade-in duration-150">
+            <WhatsAppQRModule
+              technician={technician}
+              settings={whatsAppSettings}
+              onUpdateSettings={setWhatsAppSettings}
             />
           </div>
         )}
@@ -353,10 +376,10 @@ export function App() {
       </div>
 
       {/* Mobile Bottom Navigation Bar (Mobile-first extreme) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 flex items-center justify-around shadow-lg no-print">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg no-print">
         <button
           onClick={() => setCurrentTab('dashboard')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
+          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
             currentTab === 'dashboard' ? 'text-sky-600' : 'text-slate-500'
           }`}
         >
@@ -372,8 +395,23 @@ export function App() {
         </button>
 
         <button
+          onClick={() => setCurrentTab('whatsapp')}
+          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+            currentTab === 'whatsapp' ? 'text-emerald-600' : 'text-slate-500'
+          }`}
+        >
+          <div className="relative">
+            <Smartphone className="w-4 h-4" />
+            {whatsAppSettings.status === 'connected' && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </div>
+          <span>WhatsApp</span>
+        </button>
+
+        <button
           onClick={() => setCurrentTab('stickers')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
+          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
             currentTab === 'stickers' ? 'text-sky-600' : 'text-slate-500'
           }`}
         >
@@ -383,7 +421,7 @@ export function App() {
 
         <button
           onClick={() => setCurrentTab('studio')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
+          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
             currentTab === 'studio' ? 'text-indigo-600' : 'text-slate-500'
           }`}
         >
@@ -392,18 +430,8 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setCurrentTab('scanner')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
-            currentTab === 'scanner' ? 'text-sky-600' : 'text-slate-500'
-          }`}
-        >
-          <QrCode className="w-4 h-4" />
-          <span>Escanear</span>
-        </button>
-
-        <button
           onClick={() => setCurrentTab('settings')}
-          className={`flex flex-col items-center gap-1 py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
+          className={`flex flex-col items-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-bold transition-colors ${
             currentTab === 'settings' ? 'text-sky-600' : 'text-slate-500'
           }`}
         >

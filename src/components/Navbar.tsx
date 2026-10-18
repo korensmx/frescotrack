@@ -1,15 +1,16 @@
 import React from 'react';
-import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Layers, Globe } from 'lucide-react';
+import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Layers, Globe, Smartphone } from 'lucide-react';
 import type { TechnicianProfile } from '../types';
 import { WeatherBanner } from './WeatherBanner';
 
 interface NavbarProps {
   technician: TechnicianProfile;
-  currentTab: 'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio';
-  setCurrentTab: (tab: 'dashboard' | 'stickers' | 'scanner' | 'settings' | 'studio') => void;
+  currentTab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio';
+  setCurrentTab: (tab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio') => void;
   onOpenRegister: () => void;
   onViewPublicWebsite: () => void;
   overdueCount: number;
+  isWhatsAppConnected?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRegister,
   onViewPublicWebsite,
   overdueCount,
+  isWhatsAppConnected = false,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs no-print">
@@ -113,7 +115,24 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Layers className="w-4 h-4 text-indigo-600" />
-            <span>Estudio Micro-Apps</span>
+            <span>Estudio</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('whatsapp')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+              currentTab === 'whatsapp'
+                ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <div className="relative">
+              <Smartphone className="w-4 h-4 text-emerald-600" />
+              {isWhatsAppConnected && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
+            </div>
+            <span>WhatsApp Web</span>
           </button>
 
           <button
@@ -148,6 +167,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="lg:hidden p-2 rounded-xl text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors"
           >
             <Globe className="w-4 h-4 text-sky-600" />
+          </button>
+
+          {/* Quick WhatsApp Icon on mobile */}
+          <button
+            onClick={() => setCurrentTab('whatsapp')}
+            title="Vincular WhatsApp Business"
+            className={`md:hidden p-2 rounded-xl border transition-colors relative ${
+              currentTab === 'whatsapp'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                : 'text-slate-700 hover:bg-slate-100 border-slate-200'
+            }`}
+          >
+            <Smartphone className="w-4 h-4 text-emerald-600" />
+            {isWhatsAppConnected && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
           </button>
 
           {/* Quick Studio Icon on mobile */}

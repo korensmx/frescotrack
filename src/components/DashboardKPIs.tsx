@@ -1,16 +1,20 @@
 import React from 'react';
-import { AlertTriangle, DollarSign, Snowflake, CheckCircle2, MessageSquare, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { AlertTriangle, DollarSign, Snowflake, CheckCircle2, MessageSquare, ArrowUpRight, TrendingUp, Smartphone, QrCode, Sparkles } from 'lucide-react';
 import { Equipment } from '../types';
 import { getEquipmentMetaIndex } from '../utils/indexing';
 
 interface DashboardKPIsProps {
   equipments: Equipment[];
   onFilterClick: (filter: 'overdue' | 'all') => void;
+  isWhatsAppConnected?: boolean;
+  onOpenWhatsAppTab?: () => void;
 }
 
 export const DashboardKPIs: React.FC<DashboardKPIsProps> = ({
   equipments,
   onFilterClick,
+  isWhatsAppConnected = false,
+  onOpenWhatsAppTab,
 }) => {
   // O(1) Precomputed Metrics from Meta Index
   const index = getEquipmentMetaIndex(equipments);
@@ -27,6 +31,50 @@ export const DashboardKPIs: React.FC<DashboardKPIsProps> = ({
 
   return (
     <section className="space-y-3">
+      {/* WhatsApp Business Quick Status Strip */}
+      <div className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        isWhatsAppConnected 
+          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' 
+          : 'bg-gradient-to-r from-emerald-50 via-sky-50 to-indigo-50 border-emerald-200 text-slate-800'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-[#25D366] text-white shrink-0 shadow-sm">
+            <Smartphone className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black">
+                {isWhatsAppConnected ? 'WhatsApp Business Vinculado' : 'Automatiza tus Envíos (Opción 2 · QR)'}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                isWhatsAppConnected ? 'bg-emerald-200 text-emerald-900' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {isWhatsAppConnected ? '● En Línea' : 'Recomendado'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              {isWhatsAppConnected 
+                ? 'Tu sesión está activa en Dokploy. Los recordatorios automáticos se envían sin tocar tu celular.'
+                : 'Conecta tu WhatsApp Business escaneando el código QR para enviar recordatorios a las 9:00 AM en automático.'}
+            </p>
+          </div>
+        </div>
+
+        {onOpenWhatsAppTab && (
+          <button
+            onClick={onOpenWhatsAppTab}
+            className={`py-1.5 px-3 rounded-xl font-bold text-xs shrink-0 flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+              isWhatsAppConnected
+                ? 'bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>{isWhatsAppConnected ? 'Gestionar Conexión' : 'Vincular por QR'}</span>
+          </button>
+        )}
+      </div>
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Main Alert Card: Overdue & Upcoming Revenue to Collect */}

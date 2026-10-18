@@ -103,3 +103,28 @@ export interface BusinessTenant {
   createdAt: string;
   isActive?: boolean;
 }
+
+export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'qrcode' | 'connected';
+
+export interface WhatsAppDeviceInfo {
+  phone: string;
+  deviceName: string;
+  platform: 'android' | 'ios' | 'web';
+  batteryPercentage: number;
+  isCharging: boolean;
+  connectedAt: string;
+  lastSyncAt: string;
+}
+
+export interface WhatsAppIntegrationSettings {
+  status: WhatsAppConnectionStatus;
+  device?: WhatsAppDeviceInfo;
+  autoSendOverdueReminders: boolean;
+  autoSendHour: number;
+  notifyOnCustomerIssueReport: boolean;
+  sendWelcomeOnNewEquipment: boolean;
+  serverUrl: string;
+  instanceName: string;
+  apiKey?: string;
+  webhookUrl?: string;
+}

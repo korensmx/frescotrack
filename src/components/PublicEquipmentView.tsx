@@ -17,6 +17,7 @@ import {
 import type { Equipment, TechnicianProfile } from '../types';
 import { formatDate, getEquipmentServiceStatus } from '../utils/dates';
 import { buildClientHelpWhatsAppMessage, createWhatsAppUrl, formatDisplayPhone } from '../utils/whatsapp';
+import { buildEquipmentQRUrl } from '../utils/qrPrefix';
 
 interface PublicEquipmentViewProps {
   equipment: Equipment;
@@ -39,7 +40,7 @@ export const PublicEquipmentView: React.FC<PublicEquipmentViewProps> = ({
   );
   const clientWhatsAppUrl = createWhatsAppUrl(technician.phone, clientWhatsAppMsg);
 
-  const publicUrl = `${window.location.origin}/equipo/${equipment.qrId}`;
+  const publicUrl = buildEquipmentQRUrl(equipment.qrId, technician.subdomain);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicUrl);

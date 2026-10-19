@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Equipment, TechnicianProfile } from '../types';
 import { formatDisplayPhone } from '../utils/whatsapp';
 import { processArrayAsync } from '../utils/asyncTasks';
+import { getTenantQRPrefix, buildEquipmentQRUrl } from '../utils/qrPrefix';
 
 interface StickerItem {
   folio: string;
@@ -36,9 +37,11 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
 
     type RawStickerItem = { folio: string; isRegistered: boolean; equipment?: Equipment };
 
+    const prefix = getTenantQRPrefix(technician);
+
     const rawItems: RawStickerItem[] = batchMode === 'new_batch'
       ? Array.from({ length: batchCount }, (_, i) => ({
-          folio: `FT-${String(startFolioNum + i).padStart(4, '0')}`,
+          folio: `${prefix}-${String(startFolioNum + i).padStart(4, '0')}`,
           isRegistered: false,
           equipment: undefined,
         }))
@@ -53,7 +56,7 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
       6,
       (item: RawStickerItem) => ({
         folio: item.folio,
-        url: `${window.location.origin}/equipo/${item.folio}`,
+        url: buildEquipmentQRUrl(item.folio, technician.subdomain),
         isRegistered: item.isRegistered,
         equipment: item.equipment,
       })

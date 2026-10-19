@@ -83,6 +83,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     customDomain: 'doctorclima.versel.app',
     createdAt: '2026-10-10',
     isActive: false,
+    qrPrefix: 'DC',
     whatsAppSettings: {
       status: 'disconnected',
       autoSendOverdueReminders: true,
@@ -91,6 +92,52 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       sendWelcomeOnNewEquipment: true,
       serverUrl: 'https://evolution.korensmx.com',
       instanceName: 'frescotrack-doctor-clima-altamira',
+      apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
+    },
+  },
+  {
+    id: 'tenant-004',
+    slug: 'climas-korens',
+    businessName: 'Climas Korens',
+    technicianName: 'Ing. Gerardo Amador',
+    phone: '8332065922',
+    city: 'Tampico, Cd. Madero y Altamira',
+    logoUrl: '',
+    brandColor: '#2563eb', // Blue
+    pricing: {
+      ...DEFAULT_PRICING_MATRIX,
+      baseMinisplit: 750,
+      baseVentana: 600,
+    },
+    qrPrefix: 'CK',
+    customDomain: 'frescotrack.korensmx.com/?negocio=climas-korens',
+    createdAt: '2026-10-18',
+    isActive: true,
+    landingPage: {
+      heroTitle: 'Tu Clima Enfriando al 100% y Ahorrando Luz con Climas Korens',
+      heroSubtitle: 'Mantenimiento preventivo especializado con hidrolavadora a presión, desinfección profunda de turbinas, revisión de presión de gas y carnet digital QR.',
+      specialtyBadge: 'Servicio Certificado Korens · Residencial y Comercial',
+      warrantyText: 'Garantía de 60 días por escrito',
+      workingHours: 'Lunes a Domingo de 8:00 AM a 8:00 PM',
+      customWhatsAppText: '¡Hola Ing. Gerardo Amador de Climas Korens! Quisiera agendar un mantenimiento preventivo.',
+    },
+    whatsAppSettings: {
+      status: 'connected',
+      device: {
+        phone: '5218332065922',
+        deviceName: 'WhatsApp Business',
+        platform: 'android',
+        batteryPercentage: 95,
+        isCharging: true,
+        connectedAt: '2026-10-19T01:39:35.747Z',
+        lastSyncAt: new Date().toISOString(),
+      },
+      autoSendOverdueReminders: true,
+      autoSendHour: 9,
+      notifyOnCustomerIssueReport: true,
+      sendWelcomeOnNewEquipment: true,
+      serverUrl: 'https://evolution.korensmx.com',
+      instanceName: 'frescotrack-climas-korens',
       apiKey: 'ku8U3L1sKkGOVBr+7xSiNp7Un3hvJOoAVGJAL9ZwGvWT0/Oc2cUGCRR1SOBRhmi+wb+H6oXI24EfJCcyzqr+gQ==',
     },
   }
@@ -409,5 +456,76 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
     ],
     notes: 'Requiere chaleco y casco de seguridad para ingresar.',
     tenantId: 'tenant-003'
+  },
+  // Climas Korens (tenant-004) Equipments
+  {
+    id: 'eq-010',
+    qrId: 'CK-0001',
+    clientName: 'Gerardo Amador',
+    clientPhone: '5659993957',
+    clientColonia: 'Col. Petrolera, Tampico',
+    clientCity: 'Tampico',
+    applianceType: 'Minisplit',
+    voltage: '220V',
+    systemType: 'Inverter',
+    brand: 'Mirage',
+    capacity: '1.5 Ton',
+    inverter: true,
+    location: 'Sala Principal',
+    installationDate: getRelativeISODate(-300),
+    reminderIntervalMonths: 6,
+    lastServiceDate: getRelativeISODate(-185), // Overdue by 5 days (6-month preventive maintenance)
+    suggestedPrice: 850,
+    contactedStatus: 'pending',
+    servicesHistory: [
+      {
+        id: 'srv-010',
+        date: getRelativeISODate(-185),
+        type: 'Mantenimiento Preventivo',
+        technicianName: 'Ing. Gerardo Amador',
+        cost: 850,
+        technicalNotes: 'Mantenimiento preventivo semestral con hidrolavadora, presurización 120 PSI y desinfección biológica.',
+        pressurePSI: '120 PSI',
+        refrigerantType: 'R410A',
+        warrantyDays: 60,
+      }
+    ],
+    notes: 'Cliente preferencial. Solicitar acceso por portón principal.',
+    tenantId: 'tenant-004'
+  },
+  {
+    id: 'eq-011',
+    qrId: 'CK-0002',
+    clientName: 'Dra. Claudia Salinas',
+    clientPhone: '8332065922',
+    clientColonia: 'Col. Sierra Morena, Tampico',
+    clientCity: 'Tampico',
+    applianceType: 'Minisplit',
+    voltage: '220V',
+    systemType: 'Inverter',
+    brand: 'Carrier',
+    capacity: '2 Ton',
+    inverter: true,
+    location: 'Consultorio Médico',
+    installationDate: getRelativeISODate(-90),
+    reminderIntervalMonths: 6,
+    lastServiceDate: getRelativeISODate(-90), // OK / Upcoming
+    suggestedPrice: 950,
+    contactedStatus: 'scheduled',
+    servicesHistory: [
+      {
+        id: 'srv-011',
+        date: getRelativeISODate(-90),
+        type: 'Instalación Nueva',
+        technicianName: 'Ing. Gerardo Amador',
+        cost: 2100,
+        technicalNotes: 'Instalación en segundo piso con bomba de condensado y vacío de 500 micrones.',
+        pressurePSI: '125 PSI',
+        refrigerantType: 'R410A',
+        warrantyDays: 90,
+      }
+    ],
+    notes: 'Horario de visita preferido por la tarde.',
+    tenantId: 'tenant-004'
   }
 ];

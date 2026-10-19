@@ -23,6 +23,7 @@ import type { BusinessTenant, TechnicianProfile, PricingMatrix } from '../types'
 import { DEFAULT_PRICING_MATRIX } from '../utils/pricing';
 import { formatDisplayPhone } from '../utils/whatsapp';
 import { compressImageAsync } from '../utils/asyncTasks';
+import { getTenantQRPrefix } from '../utils/qrPrefix';
 import confetti from 'canvas-confetti';
 
 interface MicroAppStudioProps {
@@ -55,12 +56,13 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
   const [city, setCity] = useState('Tampico, Cd. Madero y Altamira');
   const [logoUrl, setLogoUrl] = useState('');
   const [brandColor, setBrandColor] = useState('#0284c7');
+  const [qrPrefix, setQrPrefix] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [baseMinisplit, setBaseMinisplit] = useState(700);
   const [baseVentana, setBaseVentana] = useState(550);
   const [isCompressingLogo, setIsCompressingLogo] = useState(false);
 
-  // Auto-slugify when businessName changes
+  // Auto-slugify and auto-prefix when businessName changes
   const handleBusinessNameChange = (val: string) => {
     setBusinessName(val);
     const generated = val
@@ -70,7 +72,15 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
     setSlug(generated);
-    setCustomDomain(`${generated || 'app'}.versel.app`);
+    setCustomDomain(`frescotrack.korensmx.com/?negocio=${generated || 'app'}`);
+
+    // Auto-compute prefix (e.g. Climas Korens -> CK)
+    const words = val.trim().split(/\s+/).filter(w => w.length > 1);
+    if (words.length >= 2) {
+      setQrPrefix((words[0][0] + words[1][0]).toUpperCase());
+    } else if (val.trim()) {
+      setQrPrefix(val.trim().slice(0, 3).toUpperCase());
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +113,8 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
       return;
     }
 
+    const cleanPrefix = qrPrefix.trim().toUpperCase() || 'FT';
+
     const newTenant: BusinessTenant = {
       id: `tenant-${Date.now()}`,
       slug: slug.trim(),
@@ -112,7 +124,15 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
       city: city.trim(),
       logoUrl,
       brandColor,
-      customDomain: customDomain.trim() || `${slug.trim()}.versel.app`,
+      qrPrefix: cleanPrefix,
+      customDomain: customDomain.trim() || `frescotrack.korensmx.com/?negocio=${slug.trim()}`,
+      landingPage: {
+        heroTitle: `Tu Clima Enfriando al 100% con ${businessName.trim()}`,
+        heroSubtitle: 'Mantenimiento preventivo profesional con hidrolavadora a presión, revisión de gas refrigerante y carnet digital QR.',
+        specialtyBadge: 'Especialistas en Minisplits y Climas de Ventana',
+        warrantyText: 'Garantía por escrito en cada servicio',
+        workingHours: 'Lunes a Sábado de 8:00 AM a 7:00 PM',
+      },
       pricing: {
         ...DEFAULT_PRICING_MATRIX,
         baseMinisplit,
@@ -128,6 +148,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
     // Reset fields
     setBusinessName('');
     setSlug('');
+    setQrPrefix('');
     setTechnicianName('');
     setPhone('');
     setLogoUrl('');
@@ -264,9 +285,15 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                   <span className="font-bold text-slate-800">{formatDisplayPhone(t.phone)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Dominio Vercel:</span>
-                  <span className="font-mono font-bold text-sky-700 text-[11px] truncate max-w-[160px]">
-                    {t.customDomain || `${t.slug}.versel.app`}
+                  <span className="text-slate-400">Prefijo QR:</span>
+                  <span className="font-mono font-black text-indigo-700 text-xs">
+                    {t.qrPrefix || getTenantQRPrefix(t)}-XXXX
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">URL Directa:</span>
+                  <span className="font-mono font-bold text-sky-700 text-[11px] truncate max-w-[170px]" title={`https://frescotrack.korensmx.com/?negocio=${t.slug}`}>
+                    /?negocio={t.slug}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -440,23 +467,43 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                 />
               </div>
 
-              {/* Slug & Subdomain Preview */}
-              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-200 space-y-1">
+              {/* Slug & Production URL Preview */}
+              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-200 space-y-2">
                 <label className="block text-[11px] font-bold text-sky-900">
-                  Identificador / Subdominio Vercel:
+                  Enlace Oficial de la Micro-App:
                 </label>
-                <div className="flex items-center gap-1 font-mono text-xs font-bold text-sky-700">
-                  <span>https://</span>
+                <div className="flex items-center gap-1 font-mono text-xs font-bold text-sky-700 truncate">
+                  <span className="text-slate-500">frescotrack.korensmx.com/?negocio=</span>
                   <input
                     type="text"
                     value={slug}
                     onChange={(e) => {
-                      setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-                      setCustomDomain(`${e.target.value}.versel.app`);
+                      const clean = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                      setSlug(clean);
+                      setCustomDomain(`frescotrack.korensmx.com/?negocio=${clean}`);
                     }}
                     className="px-2 py-1 bg-white border border-sky-300 rounded-lg text-slate-900 font-mono text-xs w-36"
                   />
-                  <span>.versel.app</span>
+                </div>
+              </div>
+
+              {/* QR Prefix Input */}
+              <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-200 space-y-1">
+                <label className="block text-[11px] font-bold text-indigo-900">
+                  Prefijo Único para Stickers QR (Evita duplicidades):
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={qrPrefix}
+                    onChange={(e) => setQrPrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                    placeholder="ej. CK, RM, DC"
+                    maxLength={5}
+                    className="w-28 px-3 py-1.5 bg-white border border-indigo-300 rounded-xl font-mono font-black text-xs text-indigo-900 uppercase"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Ejemplo: <strong className="font-mono text-indigo-700">{qrPrefix || 'CK'}-0001</strong>
+                  </span>
                 </div>
               </div>
 

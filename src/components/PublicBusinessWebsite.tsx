@@ -179,22 +179,24 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
           <div className="lg:col-span-7 space-y-4 text-center lg:text-left">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-sky-100 text-sky-800 border border-sky-200">
               <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-              Especialistas en Minisplits y Climas de Ventana
+              {technician.landingPage?.specialtyBadge || 'Especialistas en Minisplits y Climas de Ventana'}
             </span>
 
             <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-              Que tu clima enfríe al 100% y <span className="text-sky-600">ahorre hasta 35%</span> en luz CFE
+              {technician.landingPage?.heroTitle || (
+                <>Que tu clima enfríe al 100% y <span className="text-sky-600">ahorre hasta 35%</span> en luz CFE</>
+              )}
             </h2>
 
             <p className="text-sm sm:text-base text-slate-600 font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Mantenimiento preventivo profesional con hidrolavadora a presión, desinfección profunda de turbinas, revisión de presión de gas y garantía digital con etiqueta QR en cada equipo.
+              {technician.landingPage?.heroSubtitle || 'Mantenimiento preventivo profesional con hidrolavadora a presión, desinfección profunda de turbinas, revisión de presión de gas y garantía digital con etiqueta QR en cada equipo.'}
             </p>
 
             {/* Benefit Bullets */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 text-xs font-bold text-slate-700 text-left">
               <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Garantía de 30 a 90 días</span>
+                <span>{technician.landingPage?.warrantyText || 'Garantía de 30 a 90 días'}</span>
               </div>
               <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -202,7 +204,7 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
               </div>
               <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Refacciones Inverter y Gas</span>
+                <span>{technician.landingPage?.workingHours || 'Atención Lunes a Sábado'}</span>
               </div>
             </div>
 

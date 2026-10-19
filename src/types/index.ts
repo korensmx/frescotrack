@@ -77,6 +77,15 @@ export interface PricingMatrix {
   commercialExtra: number; // e.g. 300
 }
 
+export interface LandingPageConfig {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  specialtyBadge?: string;
+  warrantyText?: string;
+  workingHours?: string;
+  customWhatsAppText?: string;
+}
+
 export interface TechnicianProfile {
   name: string;
   businessName: string;
@@ -88,6 +97,8 @@ export interface TechnicianProfile {
   customMessageTemplate?: string;
   subdomain?: string; // e.g. climasdelgolfo
   customDomain?: string; // e.g. climasdelgolfo.com o climasdelgolfo.frescotrack.app
+  qrPrefix?: string; // e.g. CK, RM, CG
+  landingPage?: LandingPageConfig;
 }
 
 export interface BusinessTenant {
@@ -104,6 +115,8 @@ export interface BusinessTenant {
   createdAt: string;
   isActive?: boolean;
   whatsAppSettings?: WhatsAppIntegrationSettings;
+  qrPrefix?: string;
+  landingPage?: LandingPageConfig;
 }
 
 export type WhatsAppConnectionStatus = 'disconnected' | 'connecting' | 'qrcode' | 'connected';

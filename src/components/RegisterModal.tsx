@@ -29,6 +29,7 @@ import {
 import { getRelativeISODate } from '../utils/dates';
 import { createWhatsAppUrl } from '../utils/whatsapp';
 import { calculateEquipmentServicePrice } from '../utils/pricing';
+import { getTenantQRPrefix, generateNextFolio, buildEquipmentQRUrl } from '../utils/qrPrefix';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface RegisterModalProps {
   onAddEquipment: (equipment: Equipment) => void;
   technician: TechnicianProfile;
   onViewPublicQR: (equipment: Equipment) => void;
+  existingEquipments?: Equipment[];
 }
 
 const COMMON_BRANDS = ['Mirage', 'Carrier', 'York', 'Trane', 'LG', 'Midea', 'Hisense', 'Prime', 'Lennox', 'Otro'];
@@ -61,11 +63,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
   onAddEquipment,
   technician,
   onViewPublicQR,
+  existingEquipments = [],
 }) => {
   if (!isOpen) return null;
 
-  // Form State
-  const [qrId, setQrId] = useState(() => `FT-${Math.floor(1000 + Math.random() * 9000)}`);
+  const tenantPrefix = getTenantQRPrefix(technician);
+
+  // Form State with unique prefix per business
+  const [qrId, setQrId] = useState(() => generateNextFolio(existingEquipments, tenantPrefix));
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientColonia, setClientColonia] = useState('');
@@ -253,7 +258,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
               </div>
               <div className="bg-white p-3 rounded-xl shadow-xs inline-block">
                 <QRCodeSVG
-                  value={`${window.location.origin}/equipo/${savedEquipment.qrId}`}
+                  value={buildEquipmentQRUrl(savedEquipment.qrId, technician.subdomain)}
                   size={120}
                   level="M"
                 />

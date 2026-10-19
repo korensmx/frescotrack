@@ -88,6 +88,8 @@ export function App() {
     pricing: activeTenant.pricing,
     customDomain: activeTenant.customDomain,
     subdomain: activeTenant.slug,
+    qrPrefix: activeTenant.qrPrefix,
+    landingPage: activeTenant.landingPage,
   }));
 
   // Equipments across all tenants
@@ -135,6 +137,8 @@ export function App() {
         pricing: curr.pricing,
         customDomain: curr.customDomain,
         subdomain: curr.slug,
+        qrPrefix: curr.qrPrefix,
+        landingPage: curr.landingPage,
       });
       // Load this tenant's WhatsApp session
       const tWhatsApp = loadStoredWhatsAppSettings(curr.id, curr.slug);
@@ -260,6 +264,8 @@ export function App() {
               city: updated.city,
               logoUrl: updated.logoUrl || '',
               pricing: updated.pricing,
+              qrPrefix: updated.qrPrefix,
+              landingPage: updated.landingPage,
             }
           : t
       )
@@ -411,6 +417,7 @@ export function App() {
               technician={technician}
               onSaveTechnician={handleSaveTechnician}
               onResetSeedData={handleResetSeedData}
+              onViewPublicWebsite={() => setViewMode('public')}
             />
           </div>
         )}
@@ -422,6 +429,7 @@ export function App() {
         onClose={() => setIsRegisterOpen(false)}
         onAddEquipment={handleAddEquipment}
         technician={technician}
+        existingEquipments={currentTenantEquipments}
         onViewPublicQR={(eq) => setPublicViewEquipment(eq)}
       />
 

@@ -22,11 +22,15 @@ export function loadStoredEquipments(): Equipment[] {
           return eq;
         });
 
-        const hasTenant2 = normalized.some((eq: Equipment) => eq.tenantId === 'tenant-002');
-        if (!hasTenant2) {
-          const missing = INITIAL_EQUIPMENT_LIST.filter(eq => eq.tenantId === 'tenant-002' || eq.tenantId === 'tenant-003');
-          normalized.push(...missing);
-          modified = true;
+        const hasTenant4 = normalized.some((eq: Equipment) => eq.tenantId === 'tenant-004');
+        if (!hasTenant4) {
+          const missing = INITIAL_EQUIPMENT_LIST.filter(eq => eq.tenantId === 'tenant-002' || eq.tenantId === 'tenant-003' || eq.tenantId === 'tenant-004');
+          for (const m of missing) {
+            if (!normalized.some(e => e.id === m.id)) {
+              normalized.push(m);
+              modified = true;
+            }
+          }
         }
 
         if (modified) {
@@ -78,6 +82,17 @@ export function loadStoredTenants(): BusinessTenant[] {
     if (data) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        let modified = false;
+        for (const initial of INITIAL_BUSINESS_TENANTS) {
+          const exists = parsed.some((t: BusinessTenant) => t.slug === initial.slug || t.id === initial.id);
+          if (!exists) {
+            parsed.push(initial);
+            modified = true;
+          }
+        }
+        if (modified) {
+          saveStoredTenants(parsed);
+        }
         return parsed;
       }
     }

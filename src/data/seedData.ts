@@ -11,7 +11,7 @@ export const DEFAULT_TECHNICIAN: TechnicianProfile = {
   brandColor: '#0284c7',
   pricing: DEFAULT_PRICING_MATRIX,
   subdomain: 'climas-del-golfo',
-  customDomain: 'frescotrack.korensmx.com/?negocio=climas-del-golfo',
+  customDomain: 'climas-del-golfo.korensmx.com',
 };
 
 export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
@@ -25,7 +25,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     logoUrl: '',
     brandColor: '#0284c7',
     pricing: DEFAULT_PRICING_MATRIX,
-    customDomain: 'frescotrack.korensmx.com/?negocio=climas-del-golfo',
+    customDomain: 'climas-del-golfo.korensmx.com',
     createdAt: '2026-09-15',
     isActive: true,
     whatsAppSettings: {
@@ -61,7 +61,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       minisplit_3tn: 1350,
       minisplit_3tn_inverter: 1500,
     },
-    customDomain: 'frescotrack.korensmx.com/?negocio=refrimadero-express',
+    customDomain: 'refrimadero-express.korensmx.com',
     createdAt: '2026-10-01',
     isActive: false,
     whatsAppSettings: {
@@ -98,7 +98,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       minisplit_3tn_inverter: 1550,
       commercialExtra: 350,
     },
-    customDomain: 'frescotrack.korensmx.com/?negocio=doctor-clima-altamira',
+    customDomain: 'doctor-clima-altamira.korensmx.com',
     createdAt: '2026-10-10',
     isActive: false,
     qrPrefix: 'DC',
@@ -137,7 +137,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       baseVentana: 600,
     },
     qrPrefix: 'CK',
-    customDomain: 'frescotrack.korensmx.com/?negocio=climas-korens',
+    customDomain: 'climas-korens.korensmx.com',
     createdAt: '2026-10-18',
     isActive: true,
     landingPage: {

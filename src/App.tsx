@@ -79,9 +79,18 @@ export function App() {
       if (match) return match.id;
     }
 
-    // 3. Subdomain or Hostname match (e.g. climas-korens.korensmx.com or climas-korens...sslip.io)
+    // 3. Subdomain or Hostname match (e.g. climas-korens.korensmx.com, doctorclima.korensmx.com, sslip.io)
+    const normalizedHostname = hostname.replace(/[^a-z0-9]/g, '');
     for (const t of storedTenants) {
-      if (hostname.includes(t.slug.toLowerCase())) {
+      const cleanSlug = t.slug.toLowerCase();
+      const normalizedSlug = cleanSlug.replace(/[^a-z0-9]/g, '');
+      const customDomainClean = t.customDomain ? t.customDomain.toLowerCase().replace(/^https?:\/\//, '').split('/')[0] : '';
+      
+      if (
+        hostname.includes(cleanSlug) ||
+        (customDomainClean && (hostname === customDomainClean || hostname.includes(customDomainClean))) ||
+        (normalizedSlug.length >= 4 && normalizedHostname.includes(normalizedSlug))
+      ) {
         return t.id;
       }
     }

@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dokploy:list": "node scripts/dokploy-automation.js list",
+    "dokploy:sync": "node scripts/dokploy-automation.js sync-domains",
+    "deploy:microapp": "node scripts/dokploy-automation.js deploy"
   },
   "engines": {
     "node": ">=22"

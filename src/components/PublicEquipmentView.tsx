@@ -270,6 +270,15 @@ export const PublicEquipmentView: React.FC<PublicEquipmentViewProps> = ({
             </div>
           </div>
 
+          {/* Powered by KORENS Footer */}
+          <div className="py-6 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <span>FrescoTrack ❄️ Carnet Digital</span>
+            <span className="hidden sm:inline">·</span>
+            <span className="inline-flex items-center gap-1.5 font-bold text-slate-600 bg-white/90 px-3 py-1 rounded-full border border-slate-200 shadow-xs">
+              ⚡ Powered by <strong className="text-slate-900 font-black tracking-wider">KORENS</strong>
+            </span>
+          </div>
+
         </div>
 
       </div>

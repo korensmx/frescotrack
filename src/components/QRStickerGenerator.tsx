@@ -297,8 +297,12 @@ export const QRStickerGenerator: React.FC<QRStickerGeneratorProps> = ({
         )}
 
         {/* Footer print note */}
-        <div className="mt-6 pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400 font-medium">
-          Sistema FrescoTrack B2B · Código abierto para técnicos independientes · Tampico, Madero, Altamira
+        <div className="mt-6 pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400 font-medium flex items-center justify-center gap-2">
+          <span>Sistema FrescoTrack B2B</span>
+          <span>·</span>
+          <span className="font-bold text-slate-600">Powered by KORENS</span>
+          <span>·</span>
+          <span>Tampico, Madero, Altamira</span>
         </div>
       </div>
     </div>

@@ -534,9 +534,14 @@ export function App() {
       {/* Footer (Hidden on print) */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 no-print">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 font-bold text-slate-700">
-            <span>{technician.businessName}</span>
-            <span className="text-slate-400 font-normal">| Desarrollado con FrescoTrack ❄️</span>
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <span>{technician.businessName}</span>
+              <span className="text-slate-400 font-normal">| FrescoTrack ❄️</span>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] border border-slate-200 shadow-2xs">
+              ⚡ Powered by <span className="text-slate-900 font-black tracking-wider">KORENS</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-3">

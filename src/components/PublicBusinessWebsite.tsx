@@ -573,7 +573,7 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 text-xs">
+      <footer className="bg-slate-900 text-slate-400 py-8 pb-24 md:pb-8 border-t border-slate-800 text-xs">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {technician.logoUrl ? (
@@ -587,7 +587,7 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-400 text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-slate-400 text-xs">
             <button
               onClick={onSwitchToAdmin}
               className="text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1 transition-colors"
@@ -596,7 +596,11 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
               <span>Acceso Panel de Técnico</span>
             </button>
             <span>·</span>
-            <span>Desarrollado con FrescoTrack B2B</span>
+            <span>FrescoTrack B2B</span>
+            <span>·</span>
+            <span className="inline-flex items-center gap-1.5 text-slate-300 font-bold bg-slate-800/90 px-3 py-1 rounded-full border border-slate-700 shadow-inner">
+              ⚡ Powered by <span className="text-white font-black tracking-wider">KORENS</span>
+            </span>
           </div>
         </div>
       </footer>

@@ -59,15 +59,33 @@ export function App() {
     return loadStoredMasterAdmin();
   });
 
-  // Active Tenant ID State
+  // Active Tenant ID State (Supports Dokploy container VITE_TENANT_SLUG, custom domain, query param ?negocio=, or localStorage)
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
     const negocioParam = params.get('negocio') || params.get('b');
+    const envSlug = (import.meta.env.VITE_TENANT_SLUG as string | undefined)?.trim().toLowerCase();
+    const hostname = window.location.hostname.toLowerCase();
     const storedTenants = loadStoredTenants();
+
+    // 1. Env variable set on Dokploy container
+    if (envSlug) {
+      const match = storedTenants.find(t => t.slug.toLowerCase() === envSlug);
+      if (match) return match.id;
+    }
+
+    // 2. Query param ?negocio=...
     if (negocioParam) {
       const match = storedTenants.find(t => t.slug.toLowerCase() === negocioParam.toLowerCase());
       if (match) return match.id;
     }
+
+    // 3. Subdomain or Hostname match (e.g. climas-korens.korensmx.com or climas-korens...sslip.io)
+    for (const t of storedTenants) {
+      if (hostname.includes(t.slug.toLowerCase())) {
+        return t.id;
+      }
+    }
+
     const savedActiveId = localStorage.getItem('frescotrack_active_tenant_id');
     if (savedActiveId && storedTenants.some(t => t.id === savedActiveId)) {
       return savedActiveId;
@@ -100,7 +118,32 @@ export function App() {
     return loadStoredWhatsAppSettings(activeTenant.id, activeTenant.slug);
   });
   
-  const [viewMode, setViewMode] = useState<'admin' | 'public'>('admin');
+  // Intelligent view mode: If accessed through a dedicated business domain or ?negocio=, default to public customer landing page
+  const [viewMode, setViewMode] = useState<'admin' | 'public'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const negocioParam = params.get('negocio') || params.get('b');
+    const vistaParam = params.get('vista') || params.get('portal') || params.get('cliente');
+    const panelParam = params.get('panel') || params.get('admin');
+    const envSlug = (import.meta.env.VITE_TENANT_SLUG as string | undefined)?.trim();
+    const hostname = window.location.hostname.toLowerCase();
+    const isDedicatedHost = Boolean(envSlug) || (
+      hostname !== 'localhost' && 
+      !hostname.startsWith('127.0.0.1') && 
+      hostname !== 'frescotrack.korensmx.com' &&
+      hostname.includes('korensmx.com')
+    );
+
+    if (panelParam === '1' || panelParam === 'true') {
+      return 'admin';
+    }
+    if (vistaParam === 'public' || vistaParam === '1' || vistaParam === 'web') {
+      return 'public';
+    }
+    if (negocioParam || isDedicatedHost) {
+      return 'public';
+    }
+    return 'admin';
+  });
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio'>('dashboard');
   const [activeFilter, setActiveFilter] = useState<'overdue' | 'upcoming' | 'ok' | 'all'>('overdue');
 

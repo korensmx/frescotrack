@@ -135,7 +135,16 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
       },
       pricing: {
         ...DEFAULT_PRICING_MATRIX,
-        baseMinisplit,
+        minisplit_1tn: baseMinisplit,
+        minisplit_1tn_inverter: baseMinisplit + 100,
+        minisplit_1_5tn: baseMinisplit + 100,
+        minisplit_1_5tn_inverter: baseMinisplit + 200,
+        minisplit_2tn: baseMinisplit + 250,
+        minisplit_2tn_inverter: baseMinisplit + 350,
+        minisplit_2_5tn: baseMinisplit + 450,
+        minisplit_2_5tn_inverter: baseMinisplit + 550,
+        minisplit_3tn: baseMinisplit + 650,
+        minisplit_3tn_inverter: baseMinisplit + 800,
         baseVentana,
       },
       createdAt: new Date().toISOString().split('T')[0],
@@ -297,12 +306,12 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Tarifa Minisplit:</span>
-                  <span className="font-bold text-slate-900">${t.pricing.baseMinisplit} MXN</span>
+                  <span className="text-slate-400">Minisplit 1 Ton:</span>
+                  <span className="font-bold text-slate-900">${t.pricing.minisplit_1tn || 650} / ${t.pricing.minisplit_1tn_inverter || 750}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Tarifa Ventana:</span>
-                  <span className="font-bold text-slate-900">${t.pricing.baseVentana} MXN</span>
+                  <span className="text-slate-400">Minisplit 1.5 Ton:</span>
+                  <span className="font-bold text-slate-900">${t.pricing.minisplit_1_5tn || 750} / ${t.pricing.minisplit_1_5tn_inverter || 850}</span>
                 </div>
               </div>
 

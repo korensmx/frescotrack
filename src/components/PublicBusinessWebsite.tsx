@@ -28,7 +28,7 @@ import type {
   SystemType, 
   CapacityType 
 } from '../types';
-import { calculateEquipmentServicePrice } from '../utils/pricing';
+import { calculateEquipmentServicePrice, normalizePricingMatrix, MINISPLIT_RATE_ROWS } from '../utils/pricing';
 import { formatDisplayPhone, createWhatsAppUrl } from '../utils/whatsapp';
 import { WeatherBanner } from './WeatherBanner';
 import { getEquipmentMetaIndex } from '../utils/indexing';
@@ -43,7 +43,7 @@ interface PublicBusinessWebsiteProps {
 const APPLIANCE_OPTIONS: ApplianceType[] = ['Minisplit', 'Clima de Ventana'];
 const VOLTAGE_OPTIONS: VoltageType[] = ['110V', '220V'];
 const SYSTEM_OPTIONS: SystemType[] = ['Inverter', 'Convencional / Normal'];
-const CAPACITY_OPTIONS: CapacityType[] = ['0.5 Ton', '0.75 Ton', '1 Ton', '1.5 Ton', '2 Ton', '2.5 Ton', '3 Ton'];
+const CAPACITY_OPTIONS: CapacityType[] = ['1 Ton', '1.5 Ton', '2 Ton', '2.5 Ton', '3 Ton'];
 
 export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
   technician,
@@ -61,13 +61,15 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
   const [searchFolio, setSearchFolio] = useState('');
   const [searchError, setSearchError] = useState('');
 
+  const normPricing = normalizePricingMatrix(technician.pricing);
+
   // Calculate live quote
   const calculatedPrice = calculateEquipmentServicePrice({
     applianceType: appliance,
     voltage,
     systemType: system,
     capacity,
-  }, technician.pricing);
+  }, normPricing);
 
   // WhatsApp Quote Request URL
   const quoteWhatsAppText = `¡Hola ${technician.name} de ${technician.businessName}! 👋 Estuve en su sitio web y me gustaría agendar un mantenimiento preventivo:
@@ -469,6 +471,74 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
 
           </div>
 
+        </div>
+
+        {/* Transparent 10-Rates Table for Minisplits */}
+        <div className="mt-10 pt-8 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span>📋</span> Tarifario Oficial de Mantenimiento Preventivo (Minisplits)
+              </h3>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Tarifas fijas y transparentes según capacidad y tecnología. Sin costos sorpresa al finalizar el servicio.
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-full border border-sky-200 self-start">
+              ✓ Garantía por Escrito
+            </span>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-black tracking-wider">
+                  <th className="py-2.5 px-3 sm:px-4">Capacidad del Minisplit</th>
+                  <th className="py-2.5 px-3 sm:px-4 text-center">❄️ Convencional / Normal</th>
+                  <th className="py-2.5 px-3 sm:px-4 text-center">⚡ Inverter (Ahorro)</th>
+                  <th className="py-2.5 px-3 sm:px-4 text-center">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {MINISPLIT_RATE_ROWS.map((row, idx) => {
+                  const normalPrice = normPricing[row.normalKey] as number || 0;
+                  const inverterPrice = normPricing[row.inverterKey] as number || 0;
+                  const isSelectedTonnage = capacity === row.tonnage && appliance === 'Minisplit';
+                  return (
+                    <tr 
+                      key={row.tonnage} 
+                      className={`${isSelectedTonnage ? 'bg-sky-50/70 font-bold' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'} transition-colors`}
+                    >
+                      <td className="py-2.5 px-3 sm:px-4 font-bold text-slate-800">
+                        <span className="font-mono font-black text-slate-900">{row.label}</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({row.btu})</span>
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-4 text-center font-black text-slate-800">
+                        ${normalPrice.toLocaleString('es-MX')} MXN
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-4 text-center font-black text-emerald-700">
+                        ${inverterPrice.toLocaleString('es-MX')} MXN
+                      </td>
+                      <td className="py-2.5 px-3 sm:px-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppliance('Minisplit');
+                            setCapacity(row.tonnage);
+                            const cotizadorEl = document.getElementById('cotizador');
+                            if (cotizadorEl) cotizadorEl.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 rounded-lg transition-colors"
+                        >
+                          Seleccionar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
       </section>

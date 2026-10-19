@@ -58,23 +58,29 @@ export interface Equipment {
 }
 
 export interface PricingMatrix {
-  // Base prices by appliance type
-  baseMinisplit: number; // e.g. 700
-  baseVentana: number;   // e.g. 550
-  
-  // Extra surcharge by voltage
-  voltage110vExtra: number; // e.g. 0
-  voltage220vExtra: number; // e.g. 50
+  // Las 10 Tarifas Oficiales de Minisplit
+  minisplit_1tn: number;            // Minisplit 1 Ton Normal / Convencional
+  minisplit_1tn_inverter: number;   // Minisplit 1 Ton Inverter
+  minisplit_1_5tn: number;          // Minisplit 1.5 Ton Normal / Convencional
+  minisplit_1_5tn_inverter: number; // Minisplit 1.5 Ton Inverter
+  minisplit_2tn: number;            // Minisplit 2 Ton Normal / Convencional
+  minisplit_2tn_inverter: number;   // Minisplit 2 Ton Inverter
+  minisplit_2_5tn: number;          // Minisplit 2.5 Ton Normal / Convencional
+  minisplit_2_5tn_inverter: number; // Minisplit 2.5 Ton Inverter
+  minisplit_3tn: number;            // Minisplit 3 Ton Normal / Convencional
+  minisplit_3tn_inverter: number;   // Minisplit 3 Ton Inverter
 
-  // Extra surcharge by system type
-  inverterExtra: number; // e.g. 100 (cuidados de tarjeta electrónica)
-  normalExtra: number;   // e.g. 0
+  // Otros equipos y recargos opcionales
+  baseVentana?: number;
+  commercialExtra?: number;
 
-  // Multiplier or delta by capacity (tonelaje)
-  capacityDeltas: Record<CapacityType, number>;
-
-  // Environmental extras
-  commercialExtra: number; // e.g. 300
+  // Campos legacy para retrocompatibilidad
+  baseMinisplit?: number;
+  voltage110vExtra?: number;
+  voltage220vExtra?: number;
+  inverterExtra?: number;
+  normalExtra?: number;
+  capacityDeltas?: Record<CapacityType, number>;
 }
 
 export interface LandingPageConfig {

@@ -1,6 +1,7 @@
 import { Equipment, TechnicianProfile, ServiceRecord, BusinessTenant, WhatsAppIntegrationSettings } from '../types';
 import { INITIAL_EQUIPMENT_LIST, DEFAULT_TECHNICIAN, INITIAL_BUSINESS_TENANTS } from '../data/seedData';
 import { getRelativeISODate } from './dates';
+import { normalizePricingMatrix } from './pricing';
 
 const STORAGE_EQUIPMENT_KEY = 'frescotrack_equipments_v2';
 const STORAGE_TECHNICIAN_KEY = 'frescotrack_technician_v2';
@@ -59,7 +60,10 @@ export function loadStoredTechnician(): TechnicianProfile {
     if (data) {
       const parsed = JSON.parse(data);
       if (parsed.pricing) {
-        return parsed;
+        return {
+          ...parsed,
+          pricing: normalizePricingMatrix(parsed.pricing),
+        };
       }
     }
   } catch (e) {
@@ -90,10 +94,14 @@ export function loadStoredTenants(): BusinessTenant[] {
             modified = true;
           }
         }
+        const normalized = parsed.map((t: BusinessTenant) => ({
+          ...t,
+          pricing: normalizePricingMatrix(t.pricing),
+        }));
         if (modified) {
-          saveStoredTenants(parsed);
+          saveStoredTenants(normalized);
         }
-        return parsed;
+        return normalized;
       }
     }
   } catch (e) {

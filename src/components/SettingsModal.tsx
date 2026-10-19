@@ -24,7 +24,7 @@ import {
   QrCode
 } from 'lucide-react';
 import type { TechnicianProfile, PricingMatrix, ApplianceType, VoltageType, SystemType, CapacityType } from '../types';
-import { calculateEquipmentServicePrice, DEFAULT_PRICING_MATRIX } from '../utils/pricing';
+import { calculateEquipmentServicePrice, DEFAULT_PRICING_MATRIX, normalizePricingMatrix, MINISPLIT_RATE_ROWS } from '../utils/pricing';
 import { compressImageAsync } from '../utils/asyncTasks';
 import { invalidatePricingCache } from '../utils/cache';
 import { getTenantQRPrefix } from '../utils/qrPrefix';
@@ -53,8 +53,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [logoUrl, setLogoUrl] = useState(technician.logoUrl || '');
   const [brandColor, setBrandColor] = useState(technician.brandColor || '#0284c7');
   
-  // Pricing matrix state
-  const [pricing, setPricing] = useState<PricingMatrix>(() => technician.pricing || DEFAULT_PRICING_MATRIX);
+  // Pricing matrix state (10 Minisplit rates)
+  const [pricing, setPricing] = useState<PricingMatrix>(() => normalizePricingMatrix(technician.pricing || DEFAULT_PRICING_MATRIX));
 
   // Landing Page & QR Prefix State
   const [qrPrefix, setQrPrefix] = useState(() => technician.qrPrefix || getTenantQRPrefix(technician));
@@ -103,14 +103,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleCapacityDeltaChange = (cap: CapacityType, val: number) => {
+  const handleRateChange = (key: keyof PricingMatrix, val: number) => {
     setPricing((prev) => ({
       ...prev,
-      capacityDeltas: {
-        ...prev.capacityDeltas,
-        [cap]: val,
-      },
+      [key]: val,
     }));
+  };
+
+  const handleBoostInverters = () => {
+    setPricing((prev) => ({
+      ...prev,
+      minisplit_1tn_inverter: prev.minisplit_1tn + 100,
+      minisplit_1_5tn_inverter: prev.minisplit_1_5tn + 100,
+      minisplit_2tn_inverter: prev.minisplit_2tn + 100,
+      minisplit_2_5tn_inverter: prev.minisplit_2_5tn + 100,
+      minisplit_3tn_inverter: prev.minisplit_3tn + 150,
+    }));
+  };
+
+  const handleResetDefaultRates = () => {
+    setPricing(DEFAULT_PRICING_MATRIX);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -327,62 +339,112 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* 2. PRICING MATRIX */}
+              {/* 2. PRICING MATRIX: LAS 10 TARIFAS OFICIALES DE MINISPLIT */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign className="w-4 h-4 text-emerald-600" />
-                    2. Tarifario Base de Mantenimiento Preventivo
-                  </h3>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    Valores en Moneda Nacional (MXN)
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-emerald-600" />
+                      2. Tarifario de Minisplits (10 Tarifas Oficiales)
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Configura el precio exacto de mantenimiento para cada una de las 10 combinaciones de capacidad y tecnología.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleBoostInverters}
+                      className="px-2.5 py-1 text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors flex items-center gap-1"
+                      title="Ajusta automáticamente +$100 MXN a los modelos Inverter"
+                    >
+                      <Zap className="w-3 h-3 text-amber-600" />
+                      <span>+$100 Inverter</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetDefaultRates}
+                      className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      title="Restablecer a precios estándar de mercado"
+                    >
+                      Sugeridos
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Tarifa Base Minisplit (1 Ton / 110V Convencional):
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-sm">$</span>
-                      <input 
-                        type="number" 
-                        value={pricing.baseMinisplit} 
-                        onChange={(e) => setPricing({ ...pricing, baseMinisplit: Number(e.target.value) })} 
-                        className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl font-black text-sm text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
+                {/* 10 Rates Table */}
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-black tracking-wider">
+                        <th className="py-2.5 px-3 sm:px-4">Capacidad (Tonelaje)</th>
+                        <th className="py-2.5 px-3 sm:px-4 text-center">
+                          <span className="inline-flex items-center gap-1 text-slate-700 font-black">
+                            ❄️ Convencional / Normal
+                          </span>
+                        </th>
+                        <th className="py-2.5 px-3 sm:px-4 text-center">
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-black">
+                            ⚡ Inverter (Ahorro)
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {MINISPLIT_RATE_ROWS.map((row, idx) => (
+                        <tr key={row.tonnage} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                          <td className="py-2.5 px-3 sm:px-4 font-bold text-slate-800">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-mono font-black text-[11px]">
+                                {row.label}
+                              </span>
+                              <span className="text-[10px] text-slate-400 hidden sm:inline">
+                                ({row.btu})
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 sm:px-4">
+                            <div className="relative max-w-[140px] mx-auto">
+                              <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
+                              <input
+                                type="number"
+                                step="50"
+                                value={pricing[row.normalKey] as number || 0}
+                                onChange={(e) => handleRateChange(row.normalKey, Number(e.target.value))}
+                                className="w-full pl-6 pr-2 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-sky-500 rounded-xl font-black text-sm text-center text-slate-800 focus:ring-2 focus:ring-sky-500/20 focus:outline-hidden transition-all"
+                              />
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 sm:px-4">
+                            <div className="relative max-w-[140px] mx-auto">
+                              <span className="absolute left-3 top-2 text-emerald-600 font-bold text-xs">$</span>
+                              <input
+                                type="number"
+                                step="50"
+                                value={pricing[row.inverterKey] as number || 0}
+                                onChange={(e) => handleRateChange(row.inverterKey, Number(e.target.value))}
+                                className="w-full pl-6 pr-2 py-1.5 bg-emerald-50/50 hover:bg-white focus:bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl font-black text-sm text-center text-emerald-800 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden transition-all"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Tarifa Base Clima de Ventana:
+                {/* Clima de Ventana y Extra Comercial (Secundario) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      🪟 Clima de Ventana (Cualquier Tonelaje):
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-sm">$</span>
+                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
                       <input 
                         type="number" 
-                        value={pricing.baseVentana} 
+                        value={pricing.baseVentana || 600} 
                         onChange={(e) => setPricing({ ...pricing, baseVentana: Number(e.target.value) })} 
-                        className="w-full pl-7 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl font-black text-sm text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Deltas & Surcharges */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-700">
-                      Extra por Inverter (+):
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
-                      <input 
-                        type="number" 
-                        value={pricing.inverterExtra} 
-                        onChange={(e) => setPricing({ ...pricing, inverterExtra: Number(e.target.value) })} 
                         className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-900"
                       />
                     </div>
@@ -390,28 +452,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
                     <label className="block text-[11px] font-bold text-slate-700">
-                      Extra por 220V (+):
+                      🏢 Recargo por Servicio Comercial (+):
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
                       <input 
                         type="number" 
-                        value={pricing.voltage220vExtra} 
-                        onChange={(e) => setPricing({ ...pricing, voltage220vExtra: Number(e.target.value) })} 
-                        className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-700">
-                      Extra Comercial (+):
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
-                      <input 
-                        type="number" 
-                        value={pricing.commercialExtra} 
+                        value={pricing.commercialExtra || 250} 
                         onChange={(e) => setPricing({ ...pricing, commercialExtra: Number(e.target.value) })} 
                         className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-900"
                       />
@@ -419,66 +466,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Capacity (Ton) Surcharges */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Ajuste por Tonelaje (Capacidad):
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    {(['0.5 Ton', '0.75 Ton', '1 Ton', '1.5 Ton', '2 Ton', '2.5 Ton', '3 Ton'] as CapacityType[]).map((cap) => (
-                      <div key={cap} className="flex items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-200">
-                        <span className="font-bold text-slate-600 text-[11px] truncate">{cap}:</span>
-                        <div className="relative flex-1">
-                          <span className="absolute left-1.5 top-1 text-slate-400 text-[10px]">$</span>
-                          <input 
-                            type="number" 
-                            value={pricing.capacityDeltas[cap] || 0} 
-                            onChange={(e) => handleCapacityDeltaChange(cap, Number(e.target.value))}
-                            className="w-full pl-4 pr-1 py-0.5 text-right font-mono font-bold text-slate-900 text-xs border border-slate-200 rounded-lg"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Live Pricing Simulator Box */}
-                <div className="p-4 rounded-2xl bg-emerald-900 text-white space-y-3 shadow-md">
+                <div className="p-4 rounded-2xl bg-emerald-950 text-white space-y-3 shadow-md border border-emerald-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Calculator className="w-4 h-4 text-emerald-400" />
-                      <span className="font-black text-xs uppercase tracking-wider text-emerald-200">
-                        Probador de Tarifas en Tiempo Real
-                      </span>
+                      <div>
+                        <span className="font-black text-xs uppercase tracking-wider text-emerald-200 block">
+                          Probador de Tarifas en Tiempo Real
+                        </span>
+                        <span className="text-[10px] text-emerald-400">
+                          {testAppliance === 'Minisplit' ? `Minisplit ${testCapacity} (${testSystem === 'Inverter' ? 'Inverter' : 'Normal'})` : 'Clima de Ventana'}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-emerald-300 block">Tarifa Resultante:</span>
+                      <span className="text-[10px] text-emerald-300 block">Tarifa Aplicada:</span>
                       <strong className="text-xl font-black text-white">${calculatedTestPrice} MXN</strong>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-emerald-800">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-emerald-900">
                     <div>
                       <span className="text-[10px] text-emerald-200 font-bold block mb-1">Aparato:</span>
                       <select 
                         value={testAppliance}
                         onChange={(e) => setTestAppliance(e.target.value as ApplianceType)}
-                        className="w-full py-1 px-2 rounded-lg bg-emerald-800 text-white font-bold border border-emerald-500 text-xs"
+                        className="w-full py-1.5 px-2 rounded-lg bg-emerald-900 text-white font-bold border border-emerald-700 text-xs"
                       >
-                        <option value="Minisplit">Minisplit</option>
-                        <option value="Clima de Ventana">Ventana</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] text-emerald-200 font-bold block mb-1">Voltaje:</span>
-                      <select 
-                        value={testVoltage}
-                        onChange={(e) => setTestVoltage(e.target.value as VoltageType)}
-                        className="w-full py-1 px-2 rounded-lg bg-emerald-800 text-white font-bold border border-emerald-500 text-xs"
-                      >
-                        <option value="110V">110V</option>
-                        <option value="220V">220V</option>
+                        <option value="Minisplit">❄️ Minisplit</option>
+                        <option value="Clima de Ventana">🪟 Ventana</option>
                       </select>
                     </div>
 
@@ -487,27 +504,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <select 
                         value={testSystem}
                         onChange={(e) => setTestSystem(e.target.value as SystemType)}
-                        className="w-full py-1 px-2 rounded-lg bg-emerald-800 text-white font-bold border border-emerald-500 text-xs"
+                        className="w-full py-1.5 px-2 rounded-lg bg-emerald-900 text-white font-bold border border-emerald-700 text-xs"
                       >
-                        <option value="Inverter">Inverter</option>
-                        <option value="Convencional / Normal">Normal</option>
+                        <option value="Convencional / Normal">❄️ Normal</option>
+                        <option value="Inverter">⚡ Inverter</option>
                       </select>
                     </div>
 
-                    <div>
+                    <div className="col-span-2">
                       <span className="text-[10px] text-emerald-200 font-bold block mb-1">Tonelaje:</span>
                       <select 
                         value={testCapacity}
                         onChange={(e) => setTestCapacity(e.target.value as CapacityType)}
-                        className="w-full py-1 px-2 rounded-lg bg-emerald-800 text-white font-bold border border-emerald-500 text-xs"
+                        className="w-full py-1.5 px-2 rounded-lg bg-emerald-900 text-white font-bold border border-emerald-700 text-xs"
                       >
-                        <option value="0.5 Ton">0.5 Ton</option>
-                        <option value="0.75 Ton">0.75 Ton</option>
-                        <option value="1 Ton">1 Ton</option>
-                        <option value="1.5 Ton">1.5 Ton</option>
-                        <option value="2 Ton">2 Ton</option>
-                        <option value="2.5 Ton">2.5 Ton</option>
-                        <option value="3 Ton">3 Ton</option>
+                        <option value="1 Ton">1 Ton (12,000 BTU)</option>
+                        <option value="1.5 Ton">1.5 Ton (18,000 BTU)</option>
+                        <option value="2 Ton">2 Ton (24,000 BTU)</option>
+                        <option value="2.5 Ton">2.5 Ton (30,000 BTU)</option>
+                        <option value="3 Ton">3 Ton (36,000 BTU)</option>
                       </select>
                     </div>
                   </div>

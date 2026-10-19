@@ -75,7 +75,7 @@ export const pricingCalculationCache = new MemoryCache<number>(200);
 export function getPricingCacheKey(
   specs: {
     applianceType: ApplianceType;
-    voltage: VoltageType;
+    voltage?: VoltageType;
     systemType: SystemType;
     capacity: CapacityType;
     isCommercial?: boolean;
@@ -84,14 +84,21 @@ export function getPricingCacheKey(
 ): string {
   return [
     specs.applianceType,
-    specs.voltage,
+    specs.voltage || '',
     specs.systemType,
     specs.capacity,
     specs.isCommercial ? '1' : '0',
-    matrix.baseMinisplit,
+    matrix.minisplit_1tn,
+    matrix.minisplit_1tn_inverter,
+    matrix.minisplit_1_5tn,
+    matrix.minisplit_1_5tn_inverter,
+    matrix.minisplit_2tn,
+    matrix.minisplit_2tn_inverter,
+    matrix.minisplit_2_5tn,
+    matrix.minisplit_2_5tn_inverter,
+    matrix.minisplit_3tn,
+    matrix.minisplit_3tn_inverter,
     matrix.baseVentana,
-    matrix.voltage220vExtra,
-    matrix.inverterExtra,
     matrix.commercialExtra,
   ].join('|');
 }

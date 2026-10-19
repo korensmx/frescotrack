@@ -30,7 +30,7 @@ export const QuickServiceModal: React.FC<QuickServiceModalProps> = ({
 }) => {
   if (!isOpen || !equipment) return null;
 
-  const [cost, setCost] = useState<number>(equipment.suggestedPrice || technician.pricing?.baseMinisplit || 750);
+  const [cost, setCost] = useState<number>(equipment.suggestedPrice || technician.pricing?.minisplit_1_5tn || technician.pricing?.baseMinisplit || 750);
   const [type, setType] = useState<ServiceType>('Mantenimiento Preventivo');
   const [pressurePSI, setPressurePSI] = useState('118 PSI');
   const [refrigerantType, setRefrigerantType] = useState('R410A');

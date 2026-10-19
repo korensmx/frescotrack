@@ -11,7 +11,7 @@ export const DEFAULT_TECHNICIAN: TechnicianProfile = {
   brandColor: '#0284c7',
   pricing: DEFAULT_PRICING_MATRIX,
   subdomain: 'climas-del-golfo',
-  customDomain: 'frescotrack.versel.app',
+  customDomain: 'frescotrack.korensmx.com/?negocio=climas-del-golfo',
 };
 
 export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
@@ -25,7 +25,7 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     logoUrl: '',
     brandColor: '#0284c7',
     pricing: DEFAULT_PRICING_MATRIX,
-    customDomain: 'frescotrack.versel.app',
+    customDomain: 'frescotrack.korensmx.com/?negocio=climas-del-golfo',
     createdAt: '2026-09-15',
     isActive: true,
     whatsAppSettings: {
@@ -50,9 +50,18 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     brandColor: '#059669', // Emerald
     pricing: {
       ...DEFAULT_PRICING_MATRIX,
-      baseMinisplit: 750,
+      minisplit_1tn: 700,
+      minisplit_1tn_inverter: 800,
+      minisplit_1_5tn: 800,
+      minisplit_1_5tn_inverter: 900,
+      minisplit_2tn: 950,
+      minisplit_2tn_inverter: 1050,
+      minisplit_2_5tn: 1150,
+      minisplit_2_5tn_inverter: 1250,
+      minisplit_3tn: 1350,
+      minisplit_3tn_inverter: 1500,
     },
-    customDomain: 'refrimadero.versel.app',
+    customDomain: 'frescotrack.korensmx.com/?negocio=refrimadero-express',
     createdAt: '2026-10-01',
     isActive: false,
     whatsAppSettings: {
@@ -77,10 +86,19 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     brandColor: '#ea580c', // Orange
     pricing: {
       ...DEFAULT_PRICING_MATRIX,
-      baseMinisplit: 800,
+      minisplit_1tn: 750,
+      minisplit_1tn_inverter: 850,
+      minisplit_1_5tn: 850,
+      minisplit_1_5tn_inverter: 950,
+      minisplit_2tn: 1000,
+      minisplit_2tn_inverter: 1100,
+      minisplit_2_5tn: 1200,
+      minisplit_2_5tn_inverter: 1300,
+      minisplit_3tn: 1400,
+      minisplit_3tn_inverter: 1550,
       commercialExtra: 350,
     },
-    customDomain: 'doctorclima.versel.app',
+    customDomain: 'frescotrack.korensmx.com/?negocio=doctor-clima-altamira',
     createdAt: '2026-10-10',
     isActive: false,
     qrPrefix: 'DC',
@@ -106,7 +124,16 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
     brandColor: '#2563eb', // Blue
     pricing: {
       ...DEFAULT_PRICING_MATRIX,
-      baseMinisplit: 750,
+      minisplit_1tn: 650,
+      minisplit_1tn_inverter: 750,
+      minisplit_1_5tn: 750,
+      minisplit_1_5tn_inverter: 850,
+      minisplit_2tn: 900,
+      minisplit_2tn_inverter: 1000,
+      minisplit_2_5tn: 1100,
+      minisplit_2_5tn_inverter: 1200,
+      minisplit_3tn: 1300,
+      minisplit_3tn_inverter: 1450,
       baseVentana: 600,
     },
     qrPrefix: 'CK',

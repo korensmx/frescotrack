@@ -26,6 +26,45 @@ import { compressImageAsync } from '../utils/asyncTasks';
 import { getTenantQRPrefix } from '../utils/qrPrefix';
 import confetti from 'canvas-confetti';
 
+export interface DokployAppInfo {
+  appId: string;
+  appName: string;
+  sslipDomain: string;
+  customDomain: string;
+  port: number;
+}
+
+export const DOKPLOY_APPS_MAP: Record<string, DokployAppInfo> = {
+  'climas-korens': {
+    appId: 'TI0ScaW-cnFgyHzdRNLYB',
+    appName: 'climas-korens',
+    sslipDomain: 'climas-korens-lyqurg-47aed2-95-111-239-97.sslip.io',
+    customDomain: 'climas-korens.korensmx.com',
+    port: 3000,
+  },
+  'refrimadero-express': {
+    appId: 'SpNqfoJI46MDUCsyvpfQ8',
+    appName: 'refrimadero-express',
+    sslipDomain: 'refrimadero-express-tc8jef-433871-95-111-239-97.sslip.io',
+    customDomain: 'refrimadero-express.korensmx.com',
+    port: 3000,
+  },
+  'climas-del-golfo': {
+    appId: 'ZrjFdnLCk3lCJJ6-xgghF',
+    appName: 'climas-del-golfo',
+    sslipDomain: 'climas-del-golfo-jnntqp-ae7abe-95-111-239-97.sslip.io',
+    customDomain: 'climas-del-golfo.korensmx.com',
+    port: 3000,
+  },
+  'doctor-clima-altamira': {
+    appId: 'L74B21dol2O9UP3QQU25y',
+    appName: 'doctor-clima-altamira',
+    sslipDomain: 'doctor-clima-altamira-astucz-50dc2b-95-111-239-97.sslip.io',
+    customDomain: 'doctor-clima-altamira.korensmx.com',
+    port: 3000,
+  },
+};
+
 interface MicroAppStudioProps {
   tenants: BusinessTenant[];
   currentTechnician: TechnicianProfile;
@@ -315,6 +354,66 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
                   <span className="font-bold text-slate-900">${t.pricing.minisplit_1_5tn || 750} / ${t.pricing.minisplit_1_5tn_inverter || 850}</span>
                 </div>
               </div>
+
+              {/* Dokploy Dedicated Instance Info */}
+              {DOKPLOY_APPS_MAP[t.slug] && (
+                <div className="p-3 rounded-2xl bg-slate-900 text-white space-y-2 border border-slate-800 text-xs shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-black text-sky-400 text-[10px] uppercase tracking-wider">
+                      <Server className="w-3.5 h-3.5" />
+                      <span>Instancia Dokploy Independiente</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Desplegada
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-[11px] text-slate-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">App Dokploy:</span>
+                      <span className="font-mono font-bold text-slate-200">{DOKPLOY_APPS_MAP[t.slug].appName}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Dominio SSL:</span>
+                      <a 
+                        href={`https://${DOKPLOY_APPS_MAP[t.slug].sslipDomain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-sky-300 hover:text-sky-200 underline font-bold truncate max-w-[170px]"
+                        title={`https://${DOKPLOY_APPS_MAP[t.slug].sslipDomain}`}
+                      >
+                        {DOKPLOY_APPS_MAP[t.slug].sslipDomain.split('-')[0]}.sslip.io
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <a
+                      href={`https://${DOKPLOY_APPS_MAP[t.slug].sslipDomain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 px-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-[10px] flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                      <span>Abrir Instancia Dedicada</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://${DOKPLOY_APPS_MAP[t.slug].sslipDomain}`);
+                        alert(`¡Enlace Dokploy copiado!\nhttps://${DOKPLOY_APPS_MAP[t.slug].sslipDomain}`);
+                      }}
+                      className="py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px] font-bold flex items-center gap-1"
+                      title="Copiar URL dedicada de Dokploy"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-2 pt-1">

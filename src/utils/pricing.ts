@@ -18,9 +18,9 @@ export const DEFAULT_PRICING_MATRIX: PricingMatrix = {
   minisplit_3tn: 1300,
   minisplit_3tn_inverter: 1450,
 
-  // Otros tipos y recargos
+  // Otros tipos
   baseVentana: 600,
-  commercialExtra: 250,
+  commercialExtra: 0,
 
   // Legacy fields
   baseMinisplit: 750,
@@ -83,7 +83,7 @@ export function normalizePricingMatrix(raw?: Partial<PricingMatrix> | null): Pri
       minisplit_3tn: Number(raw.minisplit_3tn) || 1300,
       minisplit_3tn_inverter: Number(raw.minisplit_3tn_inverter) || 1450,
       baseVentana: Number(raw.baseVentana) || 600,
-      commercialExtra: Number(raw.commercialExtra) || 250,
+      commercialExtra: Number(raw.commercialExtra) || 0,
     };
   }
 
@@ -112,7 +112,7 @@ export function normalizePricingMatrix(raw?: Partial<PricingMatrix> | null): Pri
     minisplit_3tn: base + d3,
     minisplit_3tn_inverter: base + d3 + inv,
     baseVentana: Number(raw.baseVentana) || 600,
-    commercialExtra: Number(raw.commercialExtra) || 250,
+    commercialExtra: Number(raw.commercialExtra) || 0,
     baseMinisplit: base,
   };
 }
@@ -167,11 +167,6 @@ export function calculateEquipmentServicePrice(
       default:
         finalPrice = isInverter ? norm.minisplit_1_5tn_inverter : norm.minisplit_1_5tn;
     }
-  }
-
-  // Commercial location surcharge (if applicable)
-  if (specs.isCommercial) {
-    finalPrice += (norm.commercialExtra || 250);
   }
 
   // Round to nearest 50 for clean Mexican technician billing

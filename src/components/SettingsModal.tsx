@@ -456,8 +456,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </table>
                 </div>
 
-                {/* Clima de Ventana y Extra Comercial (Secundario) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Clima de Ventana */}
+                <div className="pt-1">
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
                     <label className="block text-[11px] font-bold text-slate-700">
                       🪟 Clima de Ventana (Cualquier Tonelaje):
@@ -468,21 +468,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         type="number" 
                         value={pricing.baseVentana || 600} 
                         onChange={(e) => setPricing({ ...pricing, baseVentana: Number(e.target.value) })} 
-                        className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-700">
-                      🏢 Recargo por Servicio Comercial (+):
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 text-slate-400 font-bold text-xs">$</span>
-                      <input 
-                        type="number" 
-                        value={pricing.commercialExtra || 250} 
-                        onChange={(e) => setPricing({ ...pricing, commercialExtra: Number(e.target.value) })} 
                         className="w-full pl-6 pr-2 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-900"
                       />
                     </div>

@@ -112,7 +112,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
         voltage,
         systemType,
         capacity,
-        isCommercial: reminderMonths === 3,
       }, technician.pricing);
       setCost(calculated);
     }
@@ -152,7 +151,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({
       voltage,
       systemType,
       capacity,
-      isCommercial: reminderMonths === 3,
     }, technician.pricing);
     setCost(calculated);
   };

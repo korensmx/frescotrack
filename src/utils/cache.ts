@@ -87,7 +87,6 @@ export function getPricingCacheKey(
     specs.voltage || '',
     specs.systemType,
     specs.capacity,
-    specs.isCommercial ? '1' : '0',
     matrix.minisplit_1tn,
     matrix.minisplit_1tn_inverter,
     matrix.minisplit_1_5tn,
@@ -99,7 +98,6 @@ export function getPricingCacheKey(
     matrix.minisplit_3tn,
     matrix.minisplit_3tn_inverter,
     matrix.baseVentana,
-    matrix.commercialExtra,
   ].join('|');
 }
 

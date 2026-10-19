@@ -96,7 +96,6 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       minisplit_2_5tn_inverter: 1300,
       minisplit_3tn: 1400,
       minisplit_3tn_inverter: 1550,
-      commercialExtra: 350,
     },
     customDomain: 'doctor-clima-altamira.korensmx.com',
     createdAt: '2026-10-10',
@@ -262,7 +261,7 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
     installationDate: getRelativeISODate(-400),
     reminderIntervalMonths: 3, // Comercial
     lastServiceDate: getRelativeISODate(-87),
-    suggestedPrice: 1450, // 3 Ton + Comercial
+    suggestedPrice: 1300, // 3 Ton Normal
     contactedStatus: 'pending',
     servicesHistory: [
       {
@@ -270,7 +269,7 @@ export const INITIAL_EQUIPMENT_LIST: Equipment[] = [
         date: getRelativeISODate(-87),
         type: 'Mantenimiento Preventivo',
         technicianName: 'Téc. Carlos Mendoza',
-        cost: 1450,
+        cost: 1300,
         technicalNotes: 'Lavado con espuma desengrasante biodegradable grado alimenticio. Filtros limpios al 100%.',
         pressurePSI: '65 PSI',
         refrigerantType: 'R22',

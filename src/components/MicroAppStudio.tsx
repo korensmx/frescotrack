@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import type { BusinessTenant, TechnicianProfile, PricingMatrix } from '../types';
 import { DEFAULT_PRICING_MATRIX } from '../utils/pricing';
-import { formatDisplayPhone } from '../utils/whatsapp';
+import { formatDisplayPhone, DEFAULT_QUOTE_WHATSAPP_TEMPLATE } from '../utils/whatsapp';
 import { compressImageAsync } from '../utils/asyncTasks';
 import { getTenantQRPrefix } from '../utils/qrPrefix';
 import confetti from 'canvas-confetti';
@@ -132,6 +132,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
         specialtyBadge: 'Especialistas en Minisplits y Climas de Ventana',
         warrantyText: 'Garantía por escrito en cada servicio',
         workingHours: 'Lunes a Sábado de 8:00 AM a 7:00 PM',
+        customWhatsAppText: DEFAULT_QUOTE_WHATSAPP_TEMPLATE,
       },
       pricing: {
         ...DEFAULT_PRICING_MATRIX,

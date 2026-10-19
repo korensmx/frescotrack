@@ -21,13 +21,21 @@ import {
   Sparkles,
   ShieldCheck,
   Clock,
-  QrCode
+  QrCode,
+  Eye,
+  Send
 } from 'lucide-react';
 import type { TechnicianProfile, PricingMatrix, ApplianceType, VoltageType, SystemType, CapacityType } from '../types';
 import { calculateEquipmentServicePrice, DEFAULT_PRICING_MATRIX, normalizePricingMatrix, MINISPLIT_RATE_ROWS } from '../utils/pricing';
 import { compressImageAsync } from '../utils/asyncTasks';
 import { invalidatePricingCache } from '../utils/cache';
 import { getTenantQRPrefix } from '../utils/qrPrefix';
+import { 
+  DEFAULT_QUOTE_WHATSAPP_TEMPLATE, 
+  buildQuoteWhatsAppMessage, 
+  createWhatsAppUrl, 
+  formatDisplayPhone 
+} from '../utils/whatsapp';
 
 interface SettingsModalProps {
   technician: TechnicianProfile;
@@ -157,6 +165,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     systemType: testSystem,
     capacity: testCapacity,
   }, pricing);
+
+  const previewWhatsAppText = buildQuoteWhatsAppMessage(
+    customWhatsAppText,
+    {
+      tecnico: name.trim() || technician.name,
+      negocio: businessName.trim() || technician.businessName,
+      equipo: testAppliance,
+      capacidad: testCapacity,
+      voltaje: testVoltage,
+      sistema: testSystem,
+      precio: `$${calculatedTestPrice} MXN`,
+      ciudad: city.trim() || technician.city,
+      telefono: formatDisplayPhone(phone || technician.phone),
+    }
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -526,6 +549,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </select>
                     </div>
                   </div>
+
+                  <div className="mt-3 pt-3 border-t border-emerald-800/60 flex items-center justify-between text-xs">
+                    <span className="text-emerald-100 flex items-center gap-1.5 text-[11px]">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Mensaje WhatsApp con esta cotización: <strong>${calculatedTestPrice} MXN</strong></span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('landing')}
+                      className="text-[11px] font-bold text-white bg-emerald-700/80 hover:bg-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-500/50 flex items-center gap-1 transition-colors"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Previsualizar / Editar</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -636,18 +674,189 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Mensaje Personalizado de WhatsApp al Pedir Servicio:</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    value={customWhatsAppText} 
-                    onChange={(e) => setCustomWhatsAppText(e.target.value)} 
-                    placeholder="Opcional. Deja vacío para usar la cotización automática..."
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
-                  />
+                {/* 3. MENSAJE PERSONALIZADO DE WHATSAPP AL PEDIR SERVICIO (CON PREVISUALIZADOR) */}
+                <div className="pt-4 border-t border-slate-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="block text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        <span>Mensaje Personalizado de WhatsApp al Pedir Servicio</span>
+                      </label>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Este es el mensaje que el cliente enviará a tu WhatsApp al presionar <strong>"Pedir Servicio"</strong> en tu sitio web.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomWhatsAppText(DEFAULT_QUOTE_WHATSAPP_TEMPLATE)}
+                        className="px-2.5 py-1 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-lg flex items-center gap-1 transition-colors"
+                        title="Restaurar plantilla estándar con variables dinámicas"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Restaurar Plantilla</span>
+                      </button>
+                      {customWhatsAppText && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomWhatsAppText('')}
+                          className="px-2.5 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                          title="Usar mensaje automático predeterminado"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Editor Box */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>Editar Plantilla / Mensaje:</span>
+                        {customWhatsAppText.trim() ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Personalizado
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
+                            Predeterminado automático
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        Haz clic en una etiqueta para insertarla:
+                      </span>
+                    </div>
+
+                    {/* Dynamic Tag Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <span className="text-[10px] font-black uppercase text-slate-400 mr-1 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-500" /> Variables:
+                      </span>
+                      {[
+                        { tag: '{tecnico}', label: 'Nombre Técnico' },
+                        { tag: '{negocio}', label: 'Nombre Negocio' },
+                        { tag: '{equipo}', label: 'Tipo Clima' },
+                        { tag: '{capacidad}', label: 'Capacidad' },
+                        { tag: '{voltaje}', label: 'Voltaje' },
+                        { tag: '{sistema}', label: 'Tecnología' },
+                        { tag: '{precio}', label: 'Precio Cotizado' },
+                        { tag: '{ciudad}', label: 'Ciudad' },
+                      ].map((item) => (
+                        <button
+                          key={item.tag}
+                          type="button"
+                          onClick={() => {
+                            setCustomWhatsAppText((prev) => {
+                              const base = prev || DEFAULT_QUOTE_WHATSAPP_TEMPLATE;
+                              return `${base} ${item.tag}`;
+                            });
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-sky-50 text-sky-700 hover:text-sky-800 border border-slate-200 hover:border-sky-300 rounded-md text-[11px] font-mono font-bold transition-all active:scale-95 shadow-2xs"
+                          title={`Insertar etiqueta ${item.label}`}
+                        >
+                          +{item.tag}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Textarea */}
+                    <textarea 
+                      rows={5}
+                      value={customWhatsAppText} 
+                      onChange={(e) => setCustomWhatsAppText(e.target.value)} 
+                      placeholder={DEFAULT_QUOTE_WHATSAPP_TEMPLATE}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-sans text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden leading-relaxed"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      💡 Las etiquetas entre llaves como <code className="bg-slate-100 px-1 py-0.5 rounded text-sky-800 font-bold">{'{precio}'}</code> y <code className="bg-slate-100 px-1 py-0.5 rounded text-sky-800 font-bold">{'{equipo}'}</code> se reemplazan en tiempo real con la cotización exacta que el cliente elija en tu sitio web.
+                    </p>
+                  </div>
+
+                  {/* PREVIEW CONTAINER */}
+                  <div className="pt-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                        <Eye className="w-4 h-4 text-emerald-600" />
+                        <span>Previsualización en Pantalla (WhatsApp):</span>
+                      </div>
+                      <a
+                        href={createWhatsAppUrl(phone || technician.phone, previewWhatsAppText)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                        title="Abre WhatsApp para probar el mensaje en tu teléfono"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>Probar en mi WhatsApp</span>
+                      </a>
+                    </div>
+
+                    {/* WhatsApp Frame Mockup */}
+                    <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-sm bg-[#efeae2] max-w-lg mx-auto">
+                      {/* WhatsApp Mockup Header */}
+                      <div className="bg-[#075E54] text-white px-3.5 py-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm overflow-hidden border border-white/20">
+                            {logoUrl ? (
+                              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              <span>❄️</span>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-xs sm:text-sm leading-tight text-white flex items-center gap-1">
+                              <span>{businessName || 'Tu Negocio de Climas'}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                            </h4>
+                            <p className="text-[10px] text-emerald-100 leading-none">
+                              en línea · Atención a Clientes
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-white/80 text-xs">
+                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-md font-mono">
+                            Vista Previa
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* WhatsApp Mockup Chat Body */}
+                      <div className="p-3 sm:p-4 space-y-2 min-h-[140px] bg-[#efeae2]">
+                        <div className="text-center">
+                          <span className="bg-white/85 text-[10px] font-bold text-slate-500 px-2.5 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
+                            Hoy
+                          </span>
+                        </div>
+
+                        {/* Outgoing Message Bubble */}
+                        <div className="flex justify-end">
+                          <div className="bg-[#d9fdd3] text-slate-900 rounded-2xl rounded-tr-xs p-3 max-w-[92%] sm:max-w-[85%] shadow-xs border border-emerald-100/60 space-y-1">
+                            <p className="text-xs whitespace-pre-wrap leading-relaxed text-slate-800 font-sans">
+                              {previewWhatsAppText}
+                            </p>
+                            <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-medium pt-0.5">
+                              <span>12:45 p. m.</span>
+                              <span className="text-sky-500 font-bold text-xs tracking-tighter">✓✓</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* WhatsApp Mockup Fake Input Bar */}
+                      <div className="bg-[#f0f2f5] px-3 py-2 border-t border-slate-200 flex items-center gap-2">
+                        <div className="flex-1 bg-white rounded-full px-3 py-1.5 text-xs text-slate-400 flex items-center justify-between border border-slate-200">
+                          <span>Escribe un mensaje...</span>
+                          <span className="text-slate-400">📎</span>
+                        </div>
+                        <div className="w-7 h-7 rounded-full bg-[#00a884] text-white flex items-center justify-center text-xs shadow-xs">
+                          <Send className="w-3 h-3 fill-white" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

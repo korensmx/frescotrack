@@ -90,6 +90,50 @@ El equipo ${reasonText}. ¿Cuándo tendrías espacio en tu agenda para pasar a r
 }
 
 /**
+ * Default customer-to-technician WhatsApp message template when requesting service on the web
+ */
+export const DEFAULT_QUOTE_WHATSAPP_TEMPLATE = `¡Hola {tecnico} de {negocio}! 👋 Estuve en su sitio web y me gustaría agendar un mantenimiento preventivo:
+
+❄️ Equipo: {equipo} {capacidad}
+⚡ Voltaje: {voltaje} ({sistema})
+💵 Cotización en web: {precio}
+
+¿Qué días y horarios tienes disponibles para visitarme? ¡Gracias!`;
+
+export interface QuoteMessageVariables {
+  tecnico?: string;
+  negocio?: string;
+  equipo?: string;
+  capacidad?: string;
+  voltaje?: string;
+  sistema?: string;
+  precio?: string;
+  ciudad?: string;
+  telefono?: string;
+}
+
+/**
+ * Builds the customer-to-technician WhatsApp message when asking for a service / quote on the web landing page
+ */
+export function buildQuoteWhatsAppMessage(
+  customTemplate: string | undefined,
+  vars: QuoteMessageVariables
+): string {
+  const template = (customTemplate && customTemplate.trim()) || DEFAULT_QUOTE_WHATSAPP_TEMPLATE;
+
+  return template
+    .replace(/{tecnico}/gi, vars.tecnico || 'Técnico')
+    .replace(/{negocio}/gi, vars.negocio || 'Negocio de Climas')
+    .replace(/{equipo}/gi, vars.equipo || 'Minisplit')
+    .replace(/{capacidad}/gi, vars.capacidad || '1.5 Ton')
+    .replace(/{voltaje}/gi, vars.voltaje || '220V')
+    .replace(/{sistema}/gi, vars.sistema || 'Inverter')
+    .replace(/{precio}/gi, vars.precio || '$900 MXN')
+    .replace(/{ciudad}/gi, vars.ciudad || 'Tampico')
+    .replace(/{telefono}/gi, vars.telefono || '');
+}
+
+/**
  * Builds the full wa.me URL
  */
 export function createWhatsAppUrl(phone: string, text: string): string {

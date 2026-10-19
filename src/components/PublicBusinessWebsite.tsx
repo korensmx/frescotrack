@@ -29,7 +29,7 @@ import type {
   CapacityType 
 } from '../types';
 import { calculateEquipmentServicePrice, normalizePricingMatrix, MINISPLIT_RATE_ROWS } from '../utils/pricing';
-import { formatDisplayPhone, createWhatsAppUrl } from '../utils/whatsapp';
+import { formatDisplayPhone, createWhatsAppUrl, buildQuoteWhatsAppMessage } from '../utils/whatsapp';
 import { WeatherBanner } from './WeatherBanner';
 import { getEquipmentMetaIndex } from '../utils/indexing';
 
@@ -71,14 +71,21 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
     capacity,
   }, normPricing);
 
-  // WhatsApp Quote Request URL
-  const quoteWhatsAppText = `¡Hola ${technician.name} de ${technician.businessName}! 👋 Estuve en su sitio web y me gustaría agendar un mantenimiento preventivo:
-
-❄️ Equipo: ${appliance} ${capacity}
-⚡ Voltaje: ${voltage} (${system})
-💵 Cotización en web: $${calculatedPrice} MXN
-
-¿Qué días y horarios tienes disponibles para visitarme? ¡Gracias!`;
+  // WhatsApp Quote Request URL (Uses custom template if defined by technician)
+  const quoteWhatsAppText = buildQuoteWhatsAppMessage(
+    technician.landingPage?.customWhatsAppText,
+    {
+      tecnico: technician.name,
+      negocio: technician.businessName,
+      equipo: appliance,
+      capacidad: capacity,
+      voltaje: voltage,
+      sistema: system,
+      precio: `$${calculatedPrice} MXN`,
+      ciudad: technician.city,
+      telefono: formatDisplayPhone(technician.phone),
+    }
+  );
 
   const quoteWhatsAppUrl = createWhatsAppUrl(technician.phone, quoteWhatsAppText);
 

@@ -145,8 +145,13 @@ export const INITIAL_BUSINESS_TENANTS: BusinessTenant[] = [
       heroSubtitle: 'Mantenimiento preventivo especializado con hidrolavadora a presión, desinfección profunda de turbinas, revisión de presión de gas y carnet digital QR.',
       specialtyBadge: 'Servicio Certificado Korens · Residencial y Comercial',
       warrantyText: 'Garantía de 60 días por escrito',
-      workingHours: 'Lunes a Domingo de 8:00 AM a 8:00 PM',
-      customWhatsAppText: '¡Hola Ing. Gerardo Amador de Climas Korens! Quisiera agendar un mantenimiento preventivo.',
+      customWhatsAppText: `¡Hola {tecnico} de {negocio}! 👋 Estuve en su sitio web y me gustaría agendar un mantenimiento preventivo:
+
+❄️ Equipo: {equipo} {capacidad}
+⚡ Voltaje: {voltaje} ({sistema})
+💵 Cotización en web: {precio}
+
+¿Qué días y horarios tienes disponibles para visitarme? ¡Muchas gracias!`,
     },
     whatsAppSettings: {
       status: 'connected',

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "dokploy:list": "node scripts/dokploy-automation.js list",
     "dokploy:sync": "node scripts/dokploy-automation.js sync-domains",
-    "deploy:microapp": "node scripts/dokploy-automation.js deploy"
+    "deploy:microapp": "node scripts/dokploy-automation.js deploy",
+    "destroy:microapp": "node scripts/dokploy-automation.js delete"
   },
   "engines": {
     "node": ">=22"

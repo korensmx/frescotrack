@@ -8,9 +8,10 @@ import { QRStickerGenerator } from './components/QRStickerGenerator';
 import { QuickServiceModal } from './components/QuickServiceModal';
 import { SettingsModal } from './components/SettingsModal';
 import { QRScannerModal } from './components/QRScannerModal';
-import { MicroAppStudio } from './components/MicroAppStudio';
+import { MicroAppStudio, DOKPLOY_APPS_MAP } from './components/MicroAppStudio';
 import { PublicBusinessWebsite } from './components/PublicBusinessWebsite';
 import { WhatsAppQRModule } from './components/WhatsAppQRModule';
+import { deleteDokployMicroApp, provisionAndDeployDokployMicroApp } from './services/dokployApi';
 import type { 
   Equipment, 
   TechnicianProfile, 
@@ -329,12 +330,51 @@ export function App() {
     setCurrentTab('dashboard');
   };
 
-  const handleSaveNewTenant = (newTenant: BusinessTenant) => {
-    setTenants([newTenant, ...tenants]);
+  const handleSaveNewTenant = async (newTenant: BusinessTenant) => {
+    const updated = [newTenant, ...tenants];
+    setTenants(updated);
+    saveStoredTenants(updated);
+
+    // Automatically provision and deploy to Dokploy if master admin!
+    try {
+      console.log(`[FrescoTrack] Desplegando automáticamente micro-app "${newTenant.slug}" en Dokploy...`);
+      const res = await provisionAndDeployDokployMicroApp(newTenant.slug, newTenant.businessName);
+      if (res.success) {
+        console.log(`[FrescoTrack] ✅ Micro-app ${newTenant.slug} desplegada en Dokploy exitosamente.`);
+      }
+    } catch (err) {
+      console.warn('[FrescoTrack] No se pudo autodesplegar en Dokploy:', err);
+    }
   };
 
-  const handleDeleteTenant = (tenantId: string) => {
-    setTenants(tenants.filter((t) => t.id !== tenantId));
+  const handleDeleteTenant = async (tenantId: string) => {
+    const tenantToDelete = tenants.find((t) => t.id === tenantId);
+    if (!tenantToDelete) return;
+
+    // 1. Remove from local state immediately for responsive UI
+    const updated = tenants.filter((t) => t.id !== tenantId);
+    setTenants(updated);
+    saveStoredTenants(updated);
+
+    // If active tenant was deleted, switch to the first available
+    if (activeTenantId === tenantId && updated.length > 0) {
+      setActiveTenantId(updated[0].id);
+    }
+
+    // 2. Automatically delete from Dokploy in the background
+    const knownAppId = DOKPLOY_APPS_MAP[tenantToDelete.slug]?.appId;
+    console.log(`[FrescoTrack] Eliminando contenedor de micro-app "${tenantToDelete.slug}" de Dokploy...`);
+    
+    try {
+      const res = await deleteDokployMicroApp(tenantToDelete.slug, knownAppId);
+      if (res.success) {
+        console.log(`[FrescoTrack] ✅ Contenedor de ${tenantToDelete.slug} eliminado en Dokploy.`);
+      } else {
+        console.warn(`[FrescoTrack] Aviso al eliminar en Dokploy: ${res.message}`);
+      }
+    } catch (err) {
+      console.error('[FrescoTrack] Error al intentar eliminar en Dokploy:', err);
+    }
   };
 
   const handleUpdateWhatsAppSettings = (newSettings: WhatsAppIntegrationSettings) => {

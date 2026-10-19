@@ -69,8 +69,8 @@ interface MicroAppStudioProps {
   tenants: BusinessTenant[];
   currentTechnician: TechnicianProfile;
   onSelectTenant: (tenant: BusinessTenant) => void;
-  onSaveTenant: (tenant: BusinessTenant) => void;
-  onDeleteTenant: (tenantId: string) => void;
+  onSaveTenant: (tenant: BusinessTenant) => void | Promise<void>;
+  onDeleteTenant: (tenantId: string) => void | Promise<void>;
   onPreviewPublicWebsite?: (tenant: BusinessTenant) => void;
   isMasterAdmin?: boolean;
 }
@@ -86,6 +86,7 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [deletingTenantId, setDeletingTenantId] = useState<string | null>(null);
 
   // New Tenant Form State
   const [businessName, setBusinessName] = useState('');
@@ -491,15 +492,29 @@ export const MicroAppStudio: React.FC<MicroAppStudioProps> = ({
 
                     {isMasterAdmin && tenants.length > 1 && (
                       <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar la micro-app de ${t.businessName}?`)) {
-                            onDeleteTenant(t.id);
+                        disabled={deletingTenantId === t.id}
+                        onClick={async () => {
+                          if (confirm(`¿Eliminar la micro-app de ${t.businessName}?\n\n⚠️ Esta acción eliminará el negocio de FrescoTrack y DESTRUIRÁ SU CONTENEDOR Y DOMINIO EN DOKPLOY de forma automática.`)) {
+                            setDeletingTenantId(t.id);
+                            try {
+                              await onDeleteTenant(t.id);
+                            } finally {
+                              setDeletingTenantId(null);
+                            }
                           }
                         }}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
-                        title="Eliminar micro-app"
+                        className={`p-2 rounded-xl transition-colors ${
+                          deletingTenantId === t.id
+                            ? 'bg-amber-100 text-amber-700 animate-pulse cursor-wait'
+                            : 'bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600'
+                        }`}
+                        title="Eliminar micro-app y destruir contenedor en Dokploy"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingTenantId === t.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     )}
                   </div>

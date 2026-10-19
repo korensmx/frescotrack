@@ -181,12 +181,20 @@ export async function deployMicroApp(slug) {
     await apiRequest('POST', '/application.saveBuildType', {
       applicationId: app.applicationId,
       buildType: 'nixpacks',
+      dockerfile: 'Dockerfile',
+      dockerContextPath: null,
+      dockerBuildStage: null,
+      herokuVersion: '24',
+      railpackVersion: '0.15.4',
     });
 
     console.log(`🔐 Inyectando variables de entorno aisladas para el técnico...`);
     await apiRequest('POST', '/application.saveEnvironment', {
       applicationId: app.applicationId,
       env: `VITE_TENANT_SLUG=${cleanSlug}\nVITE_APP_MODE=single-tenant`,
+      buildArgs: null,
+      buildSecrets: null,
+      createEnvFile: true,
     });
 
     console.log(`🌐 Creando dominio sslip.io temporal...`);
@@ -259,6 +267,30 @@ export async function listApps() {
   }
 }
 
+// 7. Delete a Micro-App from Dokploy
+export async function deleteMicroApp(slug) {
+  const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '');
+  if (!cleanSlug) throw new Error('El slug de la micro-app no es válido');
+
+  console.log(`\n🗑️ INICIANDO ELIMINACIÓN DE MICRO-APP EN DOKPLOY: "${cleanSlug}"`);
+  console.log('='.repeat(65));
+
+  const apps = await getProjectApps();
+  const app = apps.find(a => a.name === cleanSlug);
+
+  if (!app) {
+    console.log(`ℹ️ La aplicación "${cleanSlug}" no existe en Dokploy o ya fue eliminada.`);
+    return;
+  }
+
+  console.log(`Destruyendo aplicación ${app.applicationId} (${cleanSlug})...`);
+  await apiRequest('POST', '/application.delete', {
+    applicationId: app.applicationId,
+  });
+
+  console.log(`✅ Aplicación "${cleanSlug}" y todos sus recursos eliminados exitosamente de Dokploy.\n`);
+}
+
 // CLI Execution
 async function main() {
   const args = process.argv.slice(2);
@@ -272,6 +304,13 @@ async function main() {
         process.exit(1);
       }
       await deployMicroApp(slug);
+    } else if (command === 'delete' || command === 'destroy') {
+      const slug = args[1];
+      if (!slug) {
+        console.error('❌ Error: Especifica el slug a eliminar. Ej: node scripts/dokploy-automation.js delete climas-korens');
+        process.exit(1);
+      }
+      await deleteMicroApp(slug);
     } else if (command === 'sync-domains' || command === 'sync') {
       await syncAllDomains();
     } else if (command === 'list') {
@@ -280,7 +319,8 @@ async function main() {
       console.log(`Uso:
   node scripts/dokploy-automation.js list
   node scripts/dokploy-automation.js sync-domains
-  node scripts/dokploy-automation.js deploy <slug>`);
+  node scripts/dokploy-automation.js deploy <slug>
+  node scripts/dokploy-automation.js delete <slug>`);
     }
   } catch (err) {
     console.error('❌ Error en ejecución de automatización Dokploy:', err.message);

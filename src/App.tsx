@@ -11,6 +11,7 @@ import { QRScannerModal } from './components/QRScannerModal';
 import { MicroAppStudio, DOKPLOY_APPS_MAP } from './components/MicroAppStudio';
 import { PublicBusinessWebsite } from './components/PublicBusinessWebsite';
 import { WhatsAppQRModule } from './components/WhatsAppQRModule';
+import { SupportSection } from './components/SupportSection';
 import { deleteDokployMicroApp, provisionAndDeployDokployMicroApp } from './services/dokployApi';
 import type { 
   Equipment, 
@@ -154,7 +155,7 @@ export function App() {
     }
     return 'admin';
   });
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio' | 'soporte'>('dashboard');
   const [activeFilter, setActiveFilter] = useState<'overdue' | 'upcoming' | 'ok' | 'all'>('overdue');
 
   // Modals state
@@ -511,6 +512,13 @@ export function App() {
               onResetSeedData={handleResetSeedData}
               onViewPublicWebsite={() => setViewMode('public')}
             />
+          </div>
+        )}
+
+        {/* SOPORTE & CAPACITACIÓN TAB */}
+        {currentTab === 'soporte' && (
+          <div className="animate-in fade-in duration-150">
+            <SupportSection technician={technician} />
           </div>
         )}
       </main>

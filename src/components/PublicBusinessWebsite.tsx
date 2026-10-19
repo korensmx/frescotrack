@@ -603,7 +603,21 @@ export const PublicBusinessWebsite: React.FC<PublicBusinessWebsiteProps> = ({
               <span>Acceso Panel de Técnico</span>
             </button>
             <span>·</span>
-            <span>FrescoTrack B2B</span>
+            <a
+              href="/manual.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-400 hover:text-sky-300 font-bold transition-colors"
+            >
+              Manual & Video
+            </a>
+            <span>·</span>
+            <a
+              href="mailto:contacto@korensmx.com?subject=Soporte%20FrescoTrack"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              Soporte: contacto@korensmx.com
+            </a>
             <span>·</span>
             <span className="inline-flex items-center gap-1.5 text-slate-300 font-bold bg-slate-800/90 px-3 py-1 rounded-full border border-slate-700 shadow-inner">
               ⚡ Powered by <span className="text-white font-black tracking-wider">KORENS</span>

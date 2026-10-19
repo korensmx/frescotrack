@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Manual Oficial de Operación FrescoTrack - KORENS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --primary-light: #e0f2fe;
+      --secondary: #0f172a;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text);
+      background-color: #ffffff;
+      line-height: 1.45;
+      font-size: 13px;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+    html, body {
+      width: 210mm;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+    .page {
+      width: 210mm;
+      height: 296.8mm;
+      max-height: 296.8mm;
+      padding: 14mm 16mm 12mm 16mm;
+      margin: 0;
+      background: #ffffff;
+      page-break-after: always;
+      break-after: page;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .page:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+
+    /* Page Header & Footer */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+      border-bottom: 2px solid var(--border);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .page-header .brand {
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+    }
+
+    .page-footer {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Cover Page */
+    .cover-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .cover-logo-korens {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.12));
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      font-weight: 800;
+      font-size: 11.5px;
+      padding: 5px 14px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+      border: 1px solid #bae6fd;
+    }
+
+    .cover-title {
+      display: block !important;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .cover-title-sub {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1e293b;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .cover-title-main {
+      font-size: 46px;
+      font-weight: 900;
+      color: #0284c7;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      display: block;
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover-subtitle {
+      font-size: 16px;
+      color: #334155;
+      font-weight: 600;
+      max-width: 600px;
+      margin-bottom: 22px;
+    }
+
+    .cover-korens-credit {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 8px 20px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 28px;
+    }
+
+    .cover-korens-credit strong {
+      color: #0284c7;
+    }
+
+    .cover-highlights {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      max-width: 680px;
+      width: 100%;
+    }
+
+    .cover-card {
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      text-align: left;
+    }
+
+    .cover-card .icon {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+
+    .cover-card h4 {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--secondary);
+      margin-bottom: 3px;
+    }
+
+    .cover-card p {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    /* Headings */
+    h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--secondary);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    p {
+      margin-bottom: 8px;
+      color: #334155;
+    }
+
+    /* Niño-Friendly Metaphor Boxes */
+    .child-box {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1.5px dashed #22c55e;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .child-box .box-icon {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .child-box .box-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #15803d;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .child-box p {
+      font-size: 12px;
+      color: #166534;
+      margin: 0;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    /* Tip Box */
+    .tip-box {
+      background: #eff6ff;
+      border-left: 4px solid var(--primary);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 10px 0;
+    }
+
+    .tip-box .title {
+      font-weight: 800;
+      color: var(--primary-dark);
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .tip-box p {
+      color: #1e40af;
+      font-size: 11.5px;
+      margin: 0;
+      line-height: 1.35;
+    }
+
+    /* Screenshots styling */
+    .screenshot-card {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 10px 0;
+      box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.06);
+    }
+
+    .screenshot-header {
+      background: #f1f5f9;
+      padding: 6px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      background: #0f172a;
+      display: block;
+    }
+
+    .screenshot-caption {
+      padding: 6px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #64748b;
+      font-style: italic;
+    }
+
+    /* Steps List */
+    .steps-container {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin: 9px 0;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+
+    .step-num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--secondary);
+      margin-bottom: 2px;
+    }
+
+    .step-content p {
+      font-size: 11.5px;
+      color: #475569;
+      margin: 0;
+      line-height: 1.35;
+    }
+
+    /* Semaphore Badges */
+    .semaphore-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .semaphore-card {
+      border-radius: 10px;
+      padding: 10px;
+      border: 1.5px solid;
+    }
+
+    .semaphore-card.red {
+      background: #fff1f2;
+      border-color: #fecdd3;
+    }
+    .semaphore-card.red h4 { color: #e11d48; }
+
+    .semaphore-card.yellow {
+      background: #fffbeb;
+      border-color: #fef3c7;
+    }
+    .semaphore-card.yellow h4 { color: #d97706; }
+
+    .semaphore-card.green {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+    .semaphore-card.green h4 { color: #16a34a; }
+
+    .semaphore-card h4 {
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .semaphore-card p {
+      font-size: 11px;
+      margin: 0;
+      color: #475569;
+      line-height: 1.35;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 11.5px;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: var(--secondary);
+      font-weight: 800;
+      text-align: left;
+      padding: 7px 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      color: #334155;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    ul {
+      margin-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    li {
+      margin-bottom: 4px;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    @media print {
+      body { background: #ffffff; }
+      .page {
+        margin: 0;
+        padding: 24px 32px 18px 32px;
+        height: 100vh;
+        max-height: 100vh;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PÁGINA 1: PORTADA ==================== -->
+  <div class="page">
+    <div class="cover-container">
+      <img src="./images/korens-logo.png" alt="Logo KORENS" class="cover-logo-korens" />
+      
+      <div class="cover-badge">Manual Oficial de Capacitación 2026</div>
+      
+      <div class="cover-title">
+        <span class="cover-title-sub">Manual Oficial de Operación</span>
+        <span class="cover-title-main">FrescoTrack Pro</span>
+      </div>
+      
+      <p class="cover-subtitle">
+        La plataforma inteligente de control de aires acondicionados, carnets digitales QR y cobranza automática para técnicos profesionales.
+      </p>
+
+      <div class="cover-korens-credit">
+        <span>Diseñado y Desarrollado Exclusivamente por</span>
+        <strong>KORENS®</strong>
+      </div>
+
+      <div class="cover-highlights">
+        <div class="cover-card">
+          <div class="icon">🏷️</div>
+          <h4>Sticker QR Único</h4>
+          <p>Cada clima tiene su huella digital única. El cliente nunca perderá tu teléfono.</p>
+        </div>
+        <div class="cover-card">
+          <div class="icon">💬</div>
+          <h4>WhatsApp Piloto</h4>
+          <p>Recordatorio automático a los 6 meses (9:00 AM) para cobrar el mantenimiento.</p>
+        </div>
+        <div class="cover-card">
+          <div class="icon">⚡</div>
+          <h4>Ultra Sencillo</h4>
+          <p>Explicado paso a paso con manzanitas para que lo domines en 5 minutos.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 1</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 2: INTRODUCCIÓN Y METÁFORA INFANTIL ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 1: La Filosofía del Sistema</span>
+    </div>
+
+    <h1>Capítulo 1: ¿Qué es FrescoTrack y por qué vas a ganar más dinero?</h1>
+    
+    <div class="child-box">
+      <div class="box-icon">🤖</div>
+      <div>
+        <div class="box-title">Explicación con Manzanitas (Para entender a los 10 años)</div>
+        <p>
+          Imagina que tienes una alcancía mágica y un robot mayordomo. En lugar de anotar clientes en una libreta mojada con agua de desatasco o en notas del teléfono que se borran, <strong>FrescoTrack</strong> guarda cada clima que limpias o instalas. A los 6 meses exactos, el robot le manda un mensaje educado a tu cliente diciendo: <em>"¡Hola! Ya pasaron 6 meses y tu clima necesita servicio, ¿agendamos?"</em>. ¡Tú solo recibes la confirmación y vas a cobrar tu dinero!
+        </p>
+      </div>
+    </div>
+
+    <h2>¿Quién creó esta herramienta?</h2>
+    <p>
+      <strong>FrescoTrack</strong> fue concebido, diseñado y construido por el equipo de ingeniería de <strong>KORENS</strong> para resolver el problema #1 de los técnicos en México y Latinoamérica: <em>los clientes olvidan darle servicio a sus minisplits y luego llaman a otro técnico que vieron en un volante</em>.
+    </p>
+
+    <h2>Los 3 Pilares del Éxito con FrescoTrack</h2>
+    
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>El Carnet Digital QR (La Cartilla de Vacunación del Clima)</h4>
+          <p>Así como las personas tienen cartilla y los autos tienen libro de servicios, ahora el clima de tu cliente tiene un folio único con su historial técnico: qué gas lleva, qué presión se dejó, qué fecha se limpió y cuándo le toca el próximo servicio.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>El Sticker en la Pared (Tu Tarjeta Imposible de Perder)</h4>
+          <p>Una tarjeta de presentación se va a la basura. Un sticker plastificado pegado en la pared junto a la unidad interior (evaporadora) se queda pegado 5 años. Cada vez que el cliente ve el minisplit, ve tu marca y tu código QR.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>La Cobranza Automatizada de los 6 Meses</h4>
+          <p>A los 180 días (6 meses), la app activa una alarma roja en tu pantalla y envía un WhatsApp personalizado con el nombre del cliente y el modelo de su clima para renovar el mantenimiento.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <div class="title">💡 Consejo de Oro de KORENS:</div>
+      <p>Un técnico promedio tiene 100 clientes al año. Si cada uno te da 2 mantenimientos al año de $750 MXN, ¡tienes $150,000 MXN garantizados solo asegurando que nadie se olvide de ti!</p>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 2</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 3: EL MANDO TÉCNICO Y EL SEMÁFORO ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 2: El Centro de Mando</span>
+    </div>
+
+    <h1>Capítulo 2: El Mando Técnico y el Semáforo de Clientes</h1>
+    
+    <p>
+      Al entrar a <strong>FrescoTrack</strong> verás tu <strong>Centro de Mando</strong>. Arriba tienes los contadores rápidos (KPIs) y el semáforo para saber a quién debes atender hoy mismo.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Pantalla Principal: Mando Técnico & Indicadores Clave</span>
+        <span>Vista del Técnico</span>
+      </div>
+      <img src="./images/1_dashboard.png" alt="Mando Técnico FrescoTrack" />
+      <div class="screenshot-caption">Figura 1: El Centro de Mando te muestra arriba los Climas Activos, Por Vencer (30 días), Vencidos (+6 meses) y el Ingreso Estimado por cobrar.</div>
+    </div>
+
+    <h2>¿Cómo funciona el Semáforo de Clientes?</h2>
+    
+    <div class="semaphore-grid">
+      <div class="semaphore-card red">
+        <h4>🔴 ROJO: Vencido (+6m)</h4>
+        <p><strong>¡Urgente cobrar!</strong> Han pasado más de 180 días. Toca el botón verde para mandar WhatsApp en 1 click.</p>
+      </div>
+      <div class="semaphore-card yellow">
+        <h4>🟡 AMARILLO: Próximo</h4>
+        <p><strong>¡Alerta temprana!</strong> Faltan menos de 30 días para cumplir los 6 meses. Ya puedes agendarlo.</p>
+      </div>
+      <div class="semaphore-card green">
+        <h4>🟢 VERDE: Al Corriente</h4>
+        <p><strong>¡Todo perfecto!</strong> El clima fue limpiado hace poco tiempo. Su carnet muestra cuenta regresiva segura.</p>
+      </div>
+    </div>
+
+    <div class="child-box">
+      <div class="box-icon">🚦</div>
+      <div>
+        <div class="box-title">Los 3 botones mágicos de cada tarjeta:</div>
+        <p>
+          1. <strong>WhatsApp:</strong> Abre el chat del cliente con el mensaje ya redactado.<br/>
+          2. <strong>Ver QR:</strong> Te abre el Carnet Digital exactamente igual a como lo ve el cliente.<br/>
+          3. <strong>Renovar Servicio:</strong> Tras hacer el mantenimiento, tocas este botón y el cronómetro reinicia otros 6 meses.
+        </p>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 3</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 4: CÓMO REGISTRAR UN CLIMA ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 3: Registro Rápido</span>
+    </div>
+
+    <h1>Capítulo 3: Cómo Registrar un Clima Nuevo en 45 Segundos</h1>
+
+    <p>
+      Cuando estés en la casa o negocio del cliente y termines la instalación o limpieza, solo te tomará <strong>45 segundos</strong> darlo de alta en FrescoTrack.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Modal Rápido: Botón "+ Nuevo Clima"</span>
+        <span>Tiempo récord &lt; 45s</span>
+      </div>
+      <img src="./images/2_register_modal.png" alt="Registro de Clima Nuevo" />
+      <div class="screenshot-caption">Figura 2: Formulario express de una sola pantalla con cálculo automático de gas, presión y fecha límite.</div>
+    </div>
+
+    <h2>Los 5 Pasos que debes seguir:</h2>
+
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Toca el botón azul "+ Nuevo Clima"</h4>
+          <p>Se abrirá la ventana emergente flotante sin salir de donde estás.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Escribe el Nombre del Cliente y Celular</h4>
+          <p>Ejemplo: <em>Don Carlos Méndez - 55 1234 5678</em> (asegúrate de incluir los 10 dígitos).</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Ubicación y Capacidad del Equipo</h4>
+          <p>Indica dónde está colocado (ej. <em>Recámara Principal</em>) y su tonelaje (ej. <em>1.5 Toneladas Inverter</em>).</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Gas y Presión PSI</h4>
+          <p>Anota el tipo de refrigerante (R410A / R32 / R22) y la presión (ej. <em>125 PSI</em>). Esto te da imagen de profesional total.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Toca "Guardar y Generar Folio QR"</h4>
+          <p>FrescoTrack le asigna su folio único (ej. <strong>FT-1042</strong>) y programa el recordatorio para dentro de 6 meses.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 5: STICKERS QR Y FOLIOS ÚNICOS ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 4: Stickers y Códigos QR</span>
+    </div>
+
+    <h1>Capítulo 4: Stickers QR y Folios Únicos (Tu Marca en la Pared)</h1>
+
+    <p>
+      En la pestaña <strong>"Stickers QR"</strong> encontrarás la herramienta para imprimir las etiquetas que pegarás en la carcasa o la pared del equipo de tu cliente.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Módulo de Impresión: Generador de Stickers QR de Alta Calidad</span>
+        <span>Personalizado con tu Marca</span>
+      </div>
+      <img src="./images/3_stickers.png" alt="Generador de Stickers QR FrescoTrack" />
+      <div class="screenshot-caption">Figura 3: Generador de stickers con Folio Único, QR sin duplicidades, teléfono de emergencias y logotipo.</div>
+    </div>
+
+    <h2>¿Por qué los QR nunca se confunden entre técnicos ni negocios?</h2>
+    <p>
+      Gracias a la arquitectura multi-tenant de <strong>KORENS</strong>, cada técnico tiene su propio prefijo (ej. <code>FT-</code>, <code>DK-</code>). Aunque tengas 1,000 equipos registrados, <strong>ningún código QR se repite jamás</strong>.
+    </p>
+
+    <h2>Cómo colocar el sticker como un verdadero Pro:</h2>
+    
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">A</div>
+        <div class="step-content">
+          <h4>Limpia la superficie con alcohol</h4>
+          <p>Pasa un trapo con alcohol isopropílico en la esquina del minisplit para retirar polvo y grasa.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">B</div>
+        <div class="step-content">
+          <h4>Pega el Sticker QR de FrescoTrack</h4>
+          <p>Presiona firmemente las cuatro esquinas. El código QR queda visible para que cualquiera apunte su cámara.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">C</div>
+        <div class="step-content">
+          <h4>Haz la prueba frente al cliente</h4>
+          <p>Dile a tu cliente: <em>"Mire Don Carlos, abra su cámara y apunte aquí"</em>. Al ver su carnet en su celular, quedará asombrado.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 5</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 6: WHATSAPP WEB Y PROGRAMACIÓN ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 5: Automatización WhatsApp</span>
+    </div>
+
+    <h1>Capítulo 5: Conexión de WhatsApp y Recordatorios a 6 Meses</h1>
+
+    <p>
+      El dinero en este negocio no está en buscar clientes nuevos todos los días; está en <strong>cobrar los mantenimientos de los clientes que ya tienes</strong>.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Pestaña WhatsApp Web: Vinculación QR y Agenda de Mensajes Programados</span>
+        <span>Disparo Automático 9:00 AM</span>
+      </div>
+      <img src="./images/4_whatsapp.png" alt="Módulo WhatsApp Web FrescoTrack" />
+      <div class="screenshot-caption">Figura 4: Vincula tu WhatsApp escaneando el código QR en pantalla y visualiza la agenda de recordatorios futuros.</div>
+    </div>
+
+    <h2>¿Cómo vincular tu WhatsApp en 3 pasos?</h2>
+    
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Abre la pestaña "WhatsApp Web" en FrescoTrack</h4>
+          <p>Verás en pantalla un código QR grande generado para tu negocio.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Abre WhatsApp en tu teléfono</h4>
+          <p>Ve a <strong>Ajustes &gt; Dispositivos vinculados &gt; Vincular un dispositivo</strong> y apunta al QR de la pantalla.</p>
+        </div>
+      </div>
+
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>¡Listo! Aparecerá el punto verde "CONECTADO"</h4>
+          <p>Cada mañana a las 9:00 AM, el motor revisará qué clientes cumplen 6 meses y les disparará el mensaje.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2>¿Dónde visualizo los mensajes programados?</h2>
+    <p>
+      En esta pestaña está la tabla <strong>"Mensajes de Mantenimiento Programados (6 Meses)"</strong> con el cliente, folio, fecha exacta y el botón <strong>"Enviar Simulación / Probar Ahora"</strong> para hacer pruebas.
+    </p>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 6</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 7: AJUSTES Y TARIFARIO DE 10 CAPACIDADES ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 6: Ajustes y Tarifas</span>
+    </div>
+
+    <h1>Capítulo 6: Ajustes, Tarifas de 10 Capacidades y Mensajes</h1>
+
+    <p>
+      En la pestaña <strong>"Ajustes & Tarifas"</strong> tú mandas. Puedes cambiar tu número, tu ciudad, el texto de WhatsApp y los precios de tus 10 capacidades.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Pestaña de Configuración: Tarifario de 10 Niveles y Previsualización WhatsApp</span>
+        <span>A tu Gusto</span>
+      </div>
+      <img src="./images/5_settings.png" alt="Ajustes y Tarifas de FrescoTrack" />
+      <div class="screenshot-caption">Figura 5: Edita tus precios para Minisplit estándar e Inverter, y previsualiza en tiempo real el mensaje de WhatsApp.</div>
+    </div>
+
+    <h2>Las 10 Capacidades Configurables:</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Capacidad del Clima</th>
+          <th>Tipo Estándar</th>
+          <th>Tipo Inverter (Ahorrador)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>1.0 Tonelada (12,000 BTU)</strong></td><td>Tarifa 1: Minisplit 1tn</td><td>Tarifa 2: Minisplit 1tn Inverter</td></tr>
+        <tr><td><strong>1.5 Toneladas (18,000 BTU)</strong></td><td>Tarifa 3: Minisplit 1.5tn</td><td>Tarifa 4: Minisplit 1.5tn Inverter</td></tr>
+        <tr><td><strong>2.0 Toneladas (24,000 BTU)</strong></td><td>Tarifa 5: Minisplit 2tn</td><td>Tarifa 6: Minisplit 2tn Inverter</td></tr>
+        <tr><td><strong>2.5 Toneladas (30,000 BTU)</strong></td><td>Tarifa 7: Minisplit 2.5tn</td><td>Tarifa 8: Minisplit 2.5tn Inverter</td></tr>
+        <tr><td><strong>3.0 Toneladas (36,000 BTU)</strong></td><td>Tarifa 9: Minisplit 3tn</td><td>Tarifa 10: Minisplit 3tn Inverter</td></tr>
+      </tbody>
+    </table>
+
+    <div class="tip-box">
+      <div class="title">💬 Previsualizador de WhatsApp en Tiempo Real:</div>
+      <p>
+        Abajo de tus tarifas tienes una caja interactiva: conforme editas tu mensaje, el simulador te muestra exactamente cómo se verá en el teléfono de tu cliente.
+      </p>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 7</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 8: CARNET DIGITAL DEL CLIENTE ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 7: Carnet Digital QR</span>
+    </div>
+
+    <h1>Capítulo 7: ¿Qué ve tu Cliente al Escanear el QR?</h1>
+
+    <p>
+      Cuando tu cliente o tú escanean el sticker con cualquier celular, no requiere instalar ninguna aplicación. Se abre al instante su <strong>Carnet Digital QR</strong>.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Pantalla del Cliente: Carnet Digital de Servicio</span>
+        <span>Sin Instalar Apps</span>
+      </div>
+      <img src="./images/6_carnet_qr.png" alt="Carnet Digital del Cliente FrescoTrack" />
+      <div class="screenshot-caption">Figura 6: Carnet Digital con el estado del equipo, días restantes para el servicio y botón directo de llamada/WhatsApp.</div>
+    </div>
+
+    <h2>Lo que el cliente encuentra en su carnet:</h2>
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">⏱️</div>
+        <div class="step-content">
+          <h4>Cuenta Regresiva en Tiempo Real</h4>
+          <p>Le indica cuántos días faltan para su próximo servicio o si ya está en zona roja de mantenimiento urgente.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">📋</div>
+        <div class="step-content">
+          <h4>Ficha Técnica Oficial</h4>
+          <p>Muestra el Folio, Marca, Tonelaje, Refrigerante y Presión PSI que tú le anotaste.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">🟢</div>
+        <div class="step-content">
+          <h4>Botón Gigante "Solicitar Servicio por WhatsApp"</h4>
+          <p>El cliente solo presiona el botón y te manda mensaje con el folio y datos de su equipo listos para agendar.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 8</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 9: SITIO WEB COMERCIAL DEL NEGOCIO ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Capítulo 8: Sitio Web Comercial</span>
+    </div>
+
+    <h1>Capítulo 8: Tu Sitio Web Público y Cotizador en Línea</h1>
+
+    <p>
+      Cada técnico cuenta con su propia <strong>Página Web Comercial</strong> personalizada con su propio dominio o subdominio, lista para recibir clientes de internet.
+    </p>
+
+    <div class="screenshot-card">
+      <div class="screenshot-header">
+        <span>Sitio Web Público del Negocio: Cotizador de Mantenimientos</span>
+        <span>Powered by KORENS</span>
+      </div>
+      <img src="./images/7_public_website.png" alt="Sitio Web Comercial FrescoTrack" />
+      <div class="screenshot-caption">Figura 7: Tu página web oficial con cotizador de precios, servicios y el distintivo "Powered by KORENS".</div>
+    </div>
+
+    <h2>Beneficios de tu Sitio Web Público:</h2>
+    <div class="steps-container">
+      <div class="step-item">
+        <div class="step-num">💰</div>
+        <div class="step-content">
+          <h4>Cotizador Automático</h4>
+          <p>Tus clientes eligen su número de minisplits y capacidad; el sistema calcula el total con tus tarifas configuradas.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">🚀</div>
+        <div class="step-content">
+          <h4>Presencia Profesional en Internet</h4>
+          <p>Comparte el enlace de tu sitio web en tus redes sociales, perfiles de Facebook y estados de WhatsApp.</p>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">🛡️</div>
+        <div class="step-content">
+          <h4>Sello de Confianza: Powered by KORENS</h4>
+          <p>Tus clientes verán que operas con infraestructura y tecnología de nivel empresarial respaldada por KORENS.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 9</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 10: GUÍA RÁPIDA / CHULETA DE BOLSILLO ==================== -->
+  <div class="page">
+    <div class="page-header">
+      <span class="brand">❄️ FrescoTrack · KORENS</span>
+      <span>Resumen Rápido: La Chuleta del Técnico</span>
+    </div>
+
+    <h1>Resumen Rápido para el Bolsillo del Técnico</h1>
+    
+    <div class="child-box">
+      <div class="box-icon">⭐</div>
+      <div>
+        <div class="box-title">Tu rutina de 3 pasos en cada visita técnica:</div>
+        <p>
+          1. <strong>Llegas:</strong> Limpias o reparas el clima del cliente.<br/>
+          2. <strong>Registras:</strong> Abres FrescoTrack, tocas "+ Nuevo Clima", llenas los datos en 45 segundos y pegas el Sticker QR en el equipo.<br/>
+          3. <strong>Cobras y te vas tranquilo:</strong> El sistema de FrescoTrack creado por KORENS cuidará a tu cliente y te traerá de vuelta a los 6 meses.
+        </p>
+      </div>
+    </div>
+
+    <h2>Tabla de Solución Rápida a Preguntas Frecuentes:</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Duda o Situación</th>
+          <th>¿Qué debo hacer?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>¿El cliente necesita bajar una app?</strong></td>
+          <td><strong>No.</strong> Solo abre la cámara de su celular y apunta al QR. Funciona en iPhone y Android sin instalar nada.</td>
+        </tr>
+        <tr>
+          <td><strong>¿Qué hago si cambié mis precios?</strong></td>
+          <td>Ve a <strong>"Ajustes & Tarifas"</strong>, escribe tus nuevos precios y toca guardar. Se actualizará de inmediato.</td>
+        </tr>
+        <tr>
+          <td><strong>¿Qué pasa si el cliente me paga otro servicio antes?</strong></td>
+          <td>En tu lista de climas, busca al cliente y toca <strong>"Renovar Servicio"</strong>. El cronómetro se reinicia a 180 días.</td>
+        </tr>
+        <tr>
+          <td><strong>¿Dónde veo los mensajes que se van a mandar en 6 meses?</strong></td>
+          <td>En la pestaña <strong>"WhatsApp Web"</strong>, en la tabla <em>"Mensajes de Mantenimiento Programados"</em>.</td>
+        </tr>
+        <tr>
+          <td><strong>¿Se pueden confundir los stickers de un negocio con otro?</strong></td>
+          <td><strong>Jamás.</strong> Cada negocio tiene su prefijo único garantizado por el motor multi-tenant de KORENS.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 15px; text-align: center; padding: 14px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 14px;">
+      <img src="./images/korens-logo.png" alt="Logo KORENS" style="width: 55px; height: 55px; object-fit: contain; margin-bottom: 4px;" />
+      <h3 style="color: #0f172a; margin: 0; font-size: 14.5px;">FrescoTrack Pro · Plataforma de Climatización</h3>
+      <p style="color: #0284c7; font-weight: 800; font-size: 12.5px; margin: 2px 0 0 0;">Desarrollado y Respaldado por KORENS®</p>
+      <div style="margin-top: 8px; display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 11px; border: 1px solid #bae6fd;">
+        ✉️ ¿Dudas o Soporte Técnico? Escríbenos a: <strong>contacto@korensmx.com</strong>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>FrescoTrack · Creado por KORENS</span>
+      <span>Página 10 (Final)</span>
+    </div>
+  </div>
+
+</body>
+</html>

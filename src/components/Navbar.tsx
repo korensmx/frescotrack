@@ -1,12 +1,12 @@
 import React from 'react';
-import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Layers, Globe, Smartphone } from 'lucide-react';
+import { Snowflake, Plus, QrCode, Settings, Wrench, Printer, Layers, Globe, Smartphone, BookOpen, Video, HelpCircle } from 'lucide-react';
 import type { TechnicianProfile } from '../types';
 import { WeatherBanner } from './WeatherBanner';
 
 interface NavbarProps {
   technician: TechnicianProfile;
-  currentTab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio';
-  setCurrentTab: (tab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio') => void;
+  currentTab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio' | 'soporte';
+  setCurrentTab: (tab: 'dashboard' | 'stickers' | 'scanner' | 'whatsapp' | 'settings' | 'studio' | 'soporte') => void;
   onOpenRegister: () => void;
   onViewPublicWebsite: () => void;
   overdueCount: number;
@@ -156,10 +156,34 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Settings className="w-4 h-4" />
             <span>Ajustes & Tarifas</span>
           </button>
+
+          <button
+            onClick={() => setCurrentTab('soporte')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+              currentTab === 'soporte'
+                ? 'bg-white text-sky-700 shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4 text-sky-600" />
+            <span>Soporte</span>
+          </button>
         </nav>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Manual & Video Tutorial Button */}
+          <a
+            href="/manual.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs transition-colors shadow-2xs"
+            title="Ver Manual en Video y PDF de FrescoTrack (KORENS)"
+          >
+            <Video className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">Manual & Video</span>
+          </a>
+
           {/* View Public Website Button (Desktop) */}
           <button
             onClick={onViewPublicWebsite}
@@ -213,6 +237,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="md:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
           >
             <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Quick Soporte Icon on mobile */}
+          <button
+            onClick={() => setCurrentTab('soporte')}
+            title="Centro de Soporte Técnico y Ayuda"
+            className={`md:hidden p-2 rounded-xl border transition-colors ${
+              currentTab === 'soporte'
+                ? 'bg-sky-50 text-sky-700 border-sky-300'
+                : 'text-slate-700 hover:bg-slate-100 border-slate-200'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4 text-sky-600" />
           </button>
 
           {/* Big Add Equipment CTA Button */}

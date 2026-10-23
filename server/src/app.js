@@ -557,7 +557,9 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
 
   api.post('/whatsapp/connect', h(async (req, res) => {
     if (!evolution?.enabled) fail(400, 'El envío automático todavía no está activado en el servidor');
-    res.json(await evolution.connect(req.user.id));
+    // Con número, Evolution también regresa un código para vincular desde el mismo celular.
+    const number = req.body?.phone ? `52${cleanPhone(req.body.phone)}` : null;
+    res.json(await evolution.connect(req.user.id, number));
   }));
 
   api.post('/whatsapp/disconnect', h(async (req, res) => {

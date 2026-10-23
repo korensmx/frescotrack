@@ -1,6 +1,6 @@
 // Cola de recordatorios de WhatsApp + conexión del WhatsApp Business del técnico.
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Link2, Loader2, MessageCircle, Send, Smartphone, X, Zap } from 'lucide-react';
+import { CheckCircle2, KeyRound, Loader2, MessageCircle, Send, Smartphone, X, Zap } from 'lucide-react';
 import { api, prettyDate, type Equipment } from '../api';
 import { useAuth } from '../auth';
 import { Empty, ErrorBox, Loading, PageTitle, StatusPill } from '../components/ui';
@@ -160,34 +160,55 @@ export default function WhatsApp() {
 }
 
 // Tarjeta para conectar el WhatsApp Business del técnico (con Evolution API).
+// Dos formas: un código de 8 letras (para hacerlo desde el mismo celular)
+// o un QR (para escanearlo con el celular si la app está abierta en otra pantalla).
 function ConnectCard({ onChange }: { onChange: (connected: boolean) => void }) {
+  const { user } = useAuth();
   const [state, setState] = useState<string>('loading');
+  const [mode, setMode] = useState<'idle' | 'code' | 'qr'>('idle');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [code, setCode] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     const r = await api<{ state: string }>('/whatsapp/status').catch(() => ({ state: 'error' }));
     setState(r.state);
     onChange(r.state === 'open');
-    if (r.state === 'open') setQr(null);
+    if (r.state === 'open') { setQr(null); setCode(null); setMode('idle'); }
     return r.state;
   }, [onChange]);
 
   useEffect(() => { check(); }, [check]);
 
-  // Mientras se muestra el QR, revisamos cada 3 segundos si ya lo escanearon.
+  // Mientras se muestra el código o el QR, revisamos cada 3 segundos si ya se conectó.
   useEffect(() => {
-    if (!qr) return;
+    if (!qr && !code) return;
     const id = setInterval(check, 3000);
     return () => clearInterval(id);
-  }, [qr, check]);
+  }, [qr, code, check]);
 
-  async function connect() {
-    setError(null);
+  async function connect(withCode: boolean) {
+    setError(null); setBusy(true); setCopied(false);
     try {
-      const r = await api<{ qr?: string; connected?: boolean }>('/whatsapp/connect', { method: 'POST' });
-      if (r.connected) check(); else setQr(r.qr || null);
-    } catch (err) { setError((err as Error).message); }
+      const r = await api<{ qr?: string; pairingCode?: string; connected?: boolean }>('/whatsapp/connect', {
+        method: 'POST', body: withCode ? { phone } : {},
+      });
+      if (r.connected) { check(); return; }
+      if (withCode) {
+        if (!r.pairingCode) throw new Error('No llegó el código. Intenta de nuevo en unos segundos.');
+        setCode(r.pairingCode);
+      } else {
+        setQr(r.qr || null);
+      }
+    } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
+  }
+
+  async function copy() {
+    if (!code) return;
+    try { await navigator.clipboard.writeText(code); setCopied(true); } catch { /* sin permiso: lo escribe a mano */ }
   }
 
   async function disconnect() {
@@ -209,13 +230,55 @@ function ConnectCard({ onChange }: { onChange: (connected: boolean) => void }) {
       <p className="flex items-center gap-2 font-semibold"><Smartphone size={18} className="text-ice" /> Conecta tu WhatsApp Business</p>
       <p className="mt-1 text-sm text-muted">Así los recordatorios salen automáticamente desde tu número, sin que tengas que presionar enviar.</p>
       <ErrorBox message={error} />
-      {qr ? (
-        <div className="mt-3 text-center">
-          <img src={qr} alt="Código QR para conectar WhatsApp" className="mx-auto w-60 rounded-xl bg-white p-2" />
-          <p className="mt-2 text-sm text-muted">En tu celular: WhatsApp → ⋮ → Dispositivos vinculados → Vincular dispositivo, y escanea este código.</p>
+
+      {mode === 'idle' && (
+        <div className="mt-3 space-y-2">
+          <button className="btn-ice w-full" onClick={() => setMode('code')}><KeyRound size={18} /> Conectar desde este celular</button>
+          <button className="w-full text-center text-sm text-muted underline" onClick={() => { setMode('qr'); connect(false); }}>
+            Prefiero escanear un QR (desde otra pantalla)
+          </button>
         </div>
-      ) : (
-        <button className="btn-ice mt-3 w-full" onClick={connect}><Link2 size={18} /> Conectar mi WhatsApp</button>
+      )}
+
+      {mode === 'code' && !code && (
+        <div className="mt-3">
+          <label className="label">Tu número de WhatsApp Business (10 dígitos)</label>
+          <input className="input mb-3" type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <button className="btn-ice w-full" onClick={() => connect(true)} disabled={busy}>
+            {busy ? <Loader2 className="animate-spin" size={18} /> : <KeyRound size={18} />} Pedir mi código
+          </button>
+          <button className="mt-2 w-full text-center text-sm text-muted underline" onClick={() => setMode('idle')}>Cancelar</button>
+        </div>
+      )}
+
+      {mode === 'code' && code && (
+        <div className="mt-3">
+          <p className="text-center text-sm text-muted">Tu código para vincular:</p>
+          <button onClick={copy} className="mx-auto mt-1 block rounded-xl border border-ice/40 bg-ice/10 px-4 py-3 font-mono text-3xl font-bold tracking-[0.25em] text-ice">
+            {code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code}
+          </button>
+          <p className="mt-1 text-center text-xs text-muted">{copied ? '¡Copiado!' : 'Toca el código para copiarlo'}</p>
+          <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm">
+            <li>Abre <b>WhatsApp Business</b> en este celular.</li>
+            <li>Toca <b>⋮</b> (o <b>Configuración</b> en iPhone) → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b>.</li>
+            <li>Abajo toca <b>“Vincular con el número de teléfono”</b>.</li>
+            <li>Escribe el código de arriba. ¡Listo! Regresa aquí y se pondrá en verde solito.</li>
+          </ol>
+          <a href="whatsapp://" className="btn-wa mt-4 w-full"><MessageCircle size={18} /> Abrir WhatsApp</a>
+          <button className="mt-2 w-full text-center text-sm text-muted underline" onClick={() => connect(true)} disabled={busy}>¿Expiró? Pedir otro código</button>
+        </div>
+      )}
+
+      {mode === 'qr' && (
+        qr ? (
+          <div className="mt-3 text-center">
+            <img src={qr} alt="Código QR para conectar WhatsApp" className="mx-auto w-60 rounded-xl bg-white p-2" />
+            <p className="mt-2 text-sm text-muted">En tu celular: WhatsApp → ⋮ → Dispositivos vinculados → Vincular dispositivo, y escanea este código.</p>
+            <button className="mt-2 text-sm text-muted underline" onClick={() => { setQr(null); setMode('code'); }}>Mejor usar código desde este celular</button>
+          </div>
+        ) : busy ? <Loading /> : (
+          <button className="btn-ghost mt-3 w-full" onClick={() => connect(false)}>Volver a intentar</button>
+        )
       )}
     </div>
   );

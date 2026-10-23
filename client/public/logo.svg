@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ice" gradientUnits="userSpaceOnUse" x1="60" y1="60" x2="452" y2="452">
+      <stop offset="0" stop-color="#7DF9FF"/>
+      <stop offset="0.5" stop-color="#00F2FE"/>
+      <stop offset="1" stop-color="#4FACFE"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#00F2FE" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#00F2FE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0A0E14"/>
+  <rect x="6" y="6" width="500" height="500" rx="110" fill="none" stroke="#1E2A3A" stroke-width="4"/>
+  <circle cx="256" cy="256" r="190" fill="url(#glow)"/>
+
+  <!-- Esquinas de código QR: el sticker que va pegado al equipo -->
+  <g fill="none" stroke="url(#ice)" stroke-width="18" stroke-linejoin="round">
+    <rect x="70" y="70" width="104" height="104" rx="22"/>
+    <rect x="338" y="70" width="104" height="104" rx="22"/>
+    <rect x="70" y="338" width="104" height="104" rx="22"/>
+  </g>
+  <g fill="url(#ice)">
+    <rect x="104" y="104" width="36" height="36" rx="8"/>
+    <rect x="372" y="104" width="36" height="36" rx="8"/>
+    <rect x="104" y="372" width="36" height="36" rx="8"/>
+  </g>
+
+  <!-- Copo de nieve: el clima / lo fresco -->
+  <g transform="translate(256 256)" stroke="#00F2FE" stroke-width="20" stroke-linecap="round" fill="none">
+    <g id="arm">
+      <path d="M0 -24V-118"/>
+      <path d="M-30 -96L0 -70L30 -96"/>
+    </g>
+    <use href="#arm" transform="rotate(60)"/>
+    <use href="#arm" transform="rotate(120)"/>
+    <use href="#arm" transform="rotate(180)"/>
+    <use href="#arm" transform="rotate(240)"/>
+    <use href="#arm" transform="rotate(300)"/>
+  </g>
+  <circle cx="256" cy="256" r="22" fill="none" stroke="#00F2FE" stroke-width="12"/>
+
+  <!-- Relojito naranja: el recordatorio que avisa a tiempo -->
+  <circle cx="402" cy="402" r="40" fill="#FF6B35"/>
+  <circle cx="402" cy="402" r="56" fill="none" stroke="#FF6B35" stroke-opacity="0.35" stroke-width="10"/>
+  <circle cx="402" cy="402" r="22" fill="none" stroke="#0A0E14" stroke-width="8"/>
+  <path d="M402 389v14l9 7" fill="none" stroke="#0A0E14" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

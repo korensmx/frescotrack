@@ -48,6 +48,14 @@ app.use(express.static(CLIENT_DIST, {
 }));
 app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(CLIENT_DIST, 'index.html')));
 
+// Cada 10 minutos revisamos si hay recordatorios que deban salir solos.
+const AUTO_EVERY_MS = 10 * 60 * 1000;
+const autoTick = () => app.locals.runAutoReminders()
+  .then((r) => { if (r.sent || r.errors) console.log(`Envío automático: ${r.sent} enviados, ${r.errors} con error`); })
+  .catch((err) => console.error('Envío automático falló:', err));
+setTimeout(autoTick, 30 * 1000);
+setInterval(autoTick, AUTO_EVERY_MS);
+
 app.listen(PORT, () => {
   console.log(`FrescoTrack listo en el puerto ${PORT}`);
   console.log(mercadopago.enabled ? 'Cobros: Mercado Pago activo' : 'Cobros: apagados (falta MP_ACCESS_TOKEN)');

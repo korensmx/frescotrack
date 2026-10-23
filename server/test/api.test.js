@@ -6,7 +6,7 @@ import { addMonths, addDays, today } from '../src/dates.js';
 import { createMercadoPagoClient } from '../src/mercadopago.js';
 import crypto from 'node:crypto';
 
-let server, base, db;
+let server, base, db, app;
 const sentMessages = [];
 const fakeEvolution = {
   enabled: true,
@@ -26,7 +26,7 @@ const fakeMp = {
 
 before(async () => {
   db = openDatabase(':memory:');
-  const app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp });
+  app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp, sendGapMs: 0 });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}/api`;
 });
@@ -183,4 +183,38 @@ test('firma del webhook de Mercado Pago', () => {
   assert.equal(mp.isValidSignature({ signature: `ts=${ts},v1=${v1}`, requestId: 'req1', dataId: 'ABC' }), true);
   assert.equal(mp.isValidSignature({ signature: `ts=${ts},v1=${'0'.repeat(64)}`, requestId: 'req1', dataId: 'abc' }), false);
   assert.equal(mp.isValidSignature({ signature: '', requestId: 'req1', dataId: 'abc' }), false);
+});
+
+test('envío automático el día que vence', async () => {
+  const t = await register('auto@test.com');
+  const me = await req('GET', '/me', null, t);
+  assert.equal(me.body.user.autoSend, true);
+  assert.equal(me.body.user.autoSendHour, 10);
+  const add = (qr, phone, serviceDate) => req('POST', '/equipment', { qrCode: qr, clientName: 'Cliente Auto', clientPhone: phone, serviceDate }, t);
+  assert.equal((await add('FT-AUTO01', '8330000001', addMonths(today(), -6))).status, 201);  // vence hoy
+  assert.equal((await add('FT-AUTO02', '8330000002', addMonths(today(), -9))).status, 201);  // vencido hace meses
+  assert.equal((await add('FT-AUTO03', '8330000003', addMonths(today(), -5))).status, 201);  // falta un mes
+  const mine = () => sentMessages.filter((m) => m.number.startsWith('52833000000'));
+
+  // Antes de su hora no sale nada
+  await app.locals.runAutoReminders({ hour: 8 });
+  assert.equal(mine().length, 0);
+
+  // A su hora sale solo el que vence hoy
+  const r = await app.locals.runAutoReminders({ hour: 10 });
+  assert.equal(r.sent, 1);
+  assert.deepEqual(mine().map((m) => m.number), ['528330000001']);
+
+  // No se repite
+  await app.locals.runAutoReminders({ hour: 11 });
+  assert.equal(mine().length, 1);
+
+  // Si lo apaga, no manda nada
+  await req('PUT', '/me', { autoSend: false, autoSendHour: 9 }, t);
+  assert.equal((await add('FT-AUTO04', '8330000004', addMonths(today(), -6))).status, 201);
+  await app.locals.runAutoReminders({ hour: 12 });
+  assert.equal(mine().length, 1);
+  const after = await req('GET', '/me', null, t);
+  assert.equal(after.body.user.autoSend, false);
+  assert.equal(after.body.user.autoSendHour, 9);
 });

@@ -12,6 +12,7 @@ RUN npm run build
 FROM node:22-slim
 WORKDIR /app/server
 ENV NODE_ENV=production \
+    TZ=America/Mexico_City \
     PORT=3000 \
     DB_FILE=/app/data/frescotrack.db \
     CLIENT_DIST=/app/client/dist

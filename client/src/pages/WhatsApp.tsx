@@ -1,7 +1,7 @@
 // Cola de recordatorios de WhatsApp + conexión del WhatsApp Business del técnico.
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, KeyRound, Loader2, MessageCircle, Send, Smartphone, X, Zap } from 'lucide-react';
-import { api, prettyDate, type Equipment } from '../api';
+import { CheckCircle2, Clock, KeyRound, Loader2, MessageCircle, Send, Smartphone, X, Zap } from 'lucide-react';
+import { api, prettyDate, type Equipment, type User } from '../api';
 import { useAuth } from '../auth';
 import { Empty, ErrorBox, Loading, PageTitle, StatusPill } from '../components/ui';
 
@@ -107,6 +107,7 @@ export default function WhatsApp() {
       <ErrorBox message={error} />
 
       {config?.whatsappApi && <ConnectCard onChange={setConnected} />}
+      {config?.whatsappApi && <AutoSendCard connected={connected} />}
 
       <section>
         <div className="mb-2 flex items-center justify-between">
@@ -280,6 +281,55 @@ function ConnectCard({ onChange }: { onChange: (connected: boolean) => void }) {
           <button className="btn-ghost mt-3 w-full" onClick={() => connect(false)}>Volver a intentar</button>
         )
       )}
+    </div>
+  );
+}
+
+const HOURS = [8, 9, 10, 12, 16, 18];
+const hourLabel = (h: number) => `${h > 12 ? h - 12 : h}:00 ${h < 12 ? 'am' : 'pm'}`;
+
+// Interruptor para que los recordatorios salgan solos el día que vence cada equipo.
+function AutoSendCard({ connected }: { connected: boolean }) {
+  const { user, setUser } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  if (!user) return null;
+
+  async function save(body: Partial<Pick<User, 'autoSend' | 'autoSendHour'>>) {
+    setError(null);
+    try {
+      const r = await api<{ user: User }>('/me', { method: 'PUT', body });
+      setUser(r.user);
+    } catch (err) { setError((err as Error).message); }
+  }
+
+  return (
+    <div className="card">
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 font-semibold"><Clock size={18} className="text-ice" /> Envío automático</p>
+        <button
+          role="switch" aria-checked={user.autoSend} aria-label="Envío automático"
+          onClick={() => save({ autoSend: !user.autoSend })}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition ${user.autoSend ? 'bg-ice' : 'bg-line'}`}
+        >
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${user.autoSend ? 'left-6' : 'left-1'}`} />
+        </button>
+      </div>
+      <p className="mt-1 text-sm text-muted">
+        {user.autoSend
+          ? `El día que le toca mantenimiento a un equipo, le mandamos el mensaje a tu cliente desde tu WhatsApp a partir de las ${hourLabel(user.autoSendHour)}.`
+          : 'Apagado: tú decides cuándo mandar cada mensaje desde la cola.'}
+      </p>
+      {user.autoSend && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {HOURS.map((h) => (
+            <button key={h} type="button" className={user.autoSendHour === h ? 'chip-on' : 'chip'} onClick={() => save({ autoSendHour: h })}>
+              {hourLabel(h)}
+            </button>
+          ))}
+        </div>
+      )}
+      {user.autoSend && !connected && <p className="mt-3 text-xs text-heat">Conecta tu WhatsApp arriba para que funcione.</p>}
+      <ErrorBox message={error} />
     </div>
   );
 }

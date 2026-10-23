@@ -4,7 +4,7 @@ export type Status = 'overdue' | 'due' | 'soon' | 'ok';
 
 export interface User {
   id: number; email: string; name: string; businessName: string; phone: string; city: string;
-  defaultPrice: number; messageTemplate: string; plan: 'trial' | 'pro'; planStatus: string | null;
+  defaultPrice: number; messageTemplate: string; autoSend: boolean; autoSendHour: number; plan: 'trial' | 'pro'; planStatus: string | null;
   trialEndsAt: string; trialDaysLeft: number; active: boolean;
 }
 

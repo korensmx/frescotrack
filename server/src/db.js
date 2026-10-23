@@ -83,10 +83,24 @@ CREATE INDEX IF NOT EXISTS idx_services_eq    ON services(equipment_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_eq   ON reminders(equipment_id);
 `;
 
+// Columnas que se agregaron después: si la base ya existía, se las ponemos sin borrar nada.
+const NEW_COLUMNS = [
+  ['users', 'auto_send', 'INTEGER NOT NULL DEFAULT 1'],       // 1 = mandar recordatorios solos
+  ['users', 'auto_send_hour', 'INTEGER NOT NULL DEFAULT 10'], // hora del día para mandarlos
+];
+
+function migrate(db) {
+  for (const [table, column, type] of NEW_COLUMNS) {
+    const exists = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+    if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+}
+
 export function openDatabase(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }

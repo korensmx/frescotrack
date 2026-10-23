@@ -20,6 +20,7 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 const fail = (status, message) => { throw new HttpError(status, message); };
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Deja solo los 10 dígitos de un teléfono mexicano.
 function cleanPhone(raw) {
@@ -60,7 +61,7 @@ export function buildMessage(template, data) {
     data[key] !== undefined && data[key] !== null ? String(data[key]) : all);
 }
 
-export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopago, supportPhone = '' }) {
+export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopago, supportPhone = '', sendGapMs = 1500 }) {
   const app = express();
   app.use(express.json({ limit: '200kb' }));
 
@@ -95,6 +96,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
       id: u.id, email: u.email, name: u.name, businessName: u.business_name,
       phone: u.phone, city: u.city, defaultPrice: u.default_price,
       messageTemplate: u.message_template || DEFAULT_TEMPLATE,
+      autoSend: Boolean(u.auto_send), autoSendHour: u.auto_send_hour,
       plan: u.plan, planStatus: u.plan_status || null, trialEndsAt: u.trial_ends_at, trialDaysLeft,
       active: u.plan === 'pro' || trialDaysLeft > 0,
     };
@@ -260,14 +262,16 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   api.put('/me', (req, res) => {
     const u = req.user;
     const b = req.body;
-    db.prepare(`UPDATE users SET name = ?, business_name = ?, phone = ?, city = ?, default_price = ?, message_template = ?
-      WHERE id = ?`).run(
+    db.prepare(`UPDATE users SET name = ?, business_name = ?, phone = ?, city = ?, default_price = ?, message_template = ?,
+      auto_send = ?, auto_send_hour = ? WHERE id = ?`).run(
       b.name !== undefined ? requireText(b.name, 'nombre', 100) : u.name,
       b.businessName !== undefined ? optText(b.businessName, 100) : u.business_name,
       b.phone !== undefined ? cleanPhone(b.phone) : u.phone,
       b.city !== undefined ? optText(b.city, 100) : u.city,
       b.defaultPrice !== undefined ? toInt(b.defaultPrice, u.default_price) : u.default_price,
       b.messageTemplate !== undefined ? (optText(b.messageTemplate, 1000) || null) : u.message_template,
+      b.autoSend !== undefined ? (b.autoSend ? 1 : 0) : u.auto_send,
+      b.autoSendHour !== undefined ? Math.min(23, Math.max(0, toInt(b.autoSendHour, u.auto_send_hour))) : u.auto_send_hour,
       u.id);
     res.json({ user: publicUser(getUser(u.id)) });
   });
@@ -529,7 +533,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
         await sendReminder(req.user, e, true);
         sent++;
         // Pausa corta entre mensajes para que WhatsApp no lo vea como spam.
-        await new Promise((r) => setTimeout(r, 1500));
+        await pause(sendGapMs);
       } catch (err) {
         errors.push({ equipmentId: e.id, error: err.message });
       }
@@ -595,6 +599,42 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   }));
 
   app.use('/api', api);
+
+  // ----- Envío automático -----
+  // El servidor llama esto cada rato. A cada técnico que tenga el envío automático
+  // prendido y su WhatsApp conectado, le manda los recordatorios de los equipos
+  // que vencen hoy (o que vencieron hace poco y nadie avisó), a partir de su hora elegida.
+  let autoRunning = false;
+  async function runAutoReminders({ hour = new Date().getHours() } = {}) {
+    if (!evolution?.enabled || autoRunning) return { sent: 0, errors: 0 };
+    autoRunning = true;
+    let sent = 0, errors = 0;
+    try {
+      const users = db.prepare('SELECT * FROM users WHERE auto_send = 1 AND auto_send_hour <= ?').all(hour);
+      for (const user of users) {
+        if (!publicUser(user).active) continue;
+        // Solo lo de los últimos 30 días: un equipo viejo que apenas se registró no recibe mensaje sorpresa.
+        const due = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? AND e.next_service_date BETWEEN ? AND ?
+            ORDER BY e.next_service_date`).all(user.id, addDays(today(), -30), today())
+          .filter((e) => !e.last_reminder_at).slice(0, 30);
+        if (due.length === 0 || !(await evolutionConnected(user.id))) continue;
+        for (const e of due) {
+          try {
+            await sendReminder(user, e, true);
+            sent++;
+            await pause(sendGapMs);
+          } catch (err) {
+            errors++;
+            console.error(`Recordatorio automático falló (técnico ${user.id}, equipo ${e.id}): ${err.message}`);
+          }
+        }
+      }
+    } finally {
+      autoRunning = false;
+    }
+    return { sent, errors };
+  }
+  app.locals.runAutoReminders = runAutoReminders;
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 

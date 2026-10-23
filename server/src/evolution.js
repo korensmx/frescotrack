@@ -32,20 +32,24 @@ export function createEvolutionClient({ url, apiKey, fetchImpl = fetch }) {
       return r.data?.instance?.state || r.data?.state || 'close';
     },
 
-    // Devuelve la imagen del QR (base64) que el técnico escanea con su WhatsApp Business.
-    async connect(userId) {
+    // Conecta el WhatsApp Business del técnico. Devuelve dos formas de hacerlo:
+    // - qr: imagen para escanear desde otro aparato.
+    // - pairingCode: código de 8 letras para escribir en WhatsApp desde el MISMO
+    //   celular (WhatsApp → Dispositivos vinculados → Vincular con número de teléfono).
+    //   Solo sale si mandamos el número del técnico (52 + 10 dígitos).
+    async connect(userId, number) {
       const name = instanceName(userId);
-      let r = await call('GET', `/instance/connect/${name}`);
+      const query = number ? `?number=${encodeURIComponent(number)}` : '';
+      let r = await call('GET', `/instance/connect/${name}${query}`);
       if (r.status === 404) {
-        r = await call('POST', '/instance/create', {
+        const created = await call('POST', '/instance/create', {
           instanceName: name,
           qrcode: true,
           integration: 'WHATSAPP-BAILEYS',
+          ...(number ? { number } : {}),
         });
-        if (!r.ok) throw new Error(`No se pudo crear la instancia (${r.status})`);
-        const qr = r.data?.qrcode?.base64;
-        if (qr) return { qr };
-        r = await call('GET', `/instance/connect/${name}`);
+        if (!created.ok) throw new Error(`No se pudo crear la instancia (${created.status})`);
+        r = await call('GET', `/instance/connect/${name}${query}`);
       }
       if (!r.ok) throw new Error(`Evolution API respondió ${r.status}`);
       if (r.data?.instance?.state === 'open') return { connected: true };

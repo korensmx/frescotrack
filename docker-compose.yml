@@ -1,0 +1,24 @@
+# Para Dokploy: crea un proyecto tipo "Docker Compose" apuntando a este repo.
+# El dominio (frescotrack.korensmx.com) se agrega en la pestaña "Domains" de Dokploy,
+# apuntando al servicio "app" y al puerto 3000.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:-https://frescotrack.korensmx.com}
+      JWT_SECRET: ${JWT_SECRET}
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      PRO_PRICE_MXN: ${PRO_PRICE_MXN:-299}
+      SUPPORT_PHONE: ${SUPPORT_PHONE:-}
+    volumes:
+      # Aquí vive la base de datos. NO lo borres: son los datos de todos los técnicos.
+      - frescotrack-data:/app/data
+
+volumes:
+  frescotrack-data:

@@ -7,6 +7,15 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    # Candados extra para la cajita: no puede ganar más permisos, ni escribir
+    # fuera de /app/data, ni usar "superpoderes" del sistema.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       PUBLIC_URL: ${PUBLIC_URL:-https://frescotrack.korensmx.com}
       JWT_SECRET: ${JWT_SECRET}

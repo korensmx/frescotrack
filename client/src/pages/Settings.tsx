@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, LogOut, Printer } from 'lucide-react';
-import { api, money, prettyDate, type User } from '../api';
+import { api, money, prettyDate, setToken, type User } from '../api';
 import { useAuth } from '../auth';
 import { ErrorBox, Field, PageTitle, PoweredBy } from '../components/ui';
 
@@ -28,7 +28,9 @@ export default function Settings() {
   async function changePassword() {
     setError(null); setMsg(null);
     try {
-      await api('/me/password', { method: 'PUT', body: pw });
+      // El servidor cierra las demás sesiones y nos da una llave nueva para seguir dentro.
+      const r = await api<{ token: string }>('/me/password', { method: 'PUT', body: pw });
+      setToken(r.token);
       setPw({ currentPassword: '', newPassword: '' }); setMsg('Contraseña actualizada');
     } catch (err) { setError((err as Error).message); }
   }

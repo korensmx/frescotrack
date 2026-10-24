@@ -22,6 +22,13 @@ if (!jwtSecret) {
   jwtSecret = crypto.randomBytes(32).toString('hex');
   console.warn('JWT_SECRET no está definido: usando uno temporal (las sesiones se cerrarán al reiniciar).');
 }
+if (process.env.NODE_ENV === 'production' && jwtSecret.length < 32) {
+  console.error('JWT_SECRET es muy corto (mínimo 32 caracteres). Genera uno con: openssl rand -hex 32');
+  process.exit(1);
+}
+if (process.env.MP_ACCESS_TOKEN && !process.env.MP_WEBHOOK_SECRET) {
+  console.warn('Aviso: falta MP_WEBHOOK_SECRET. Los avisos de Mercado Pago no se pueden comprobar con firma.');
+}
 
 const db = openDatabase(DB_FILE);
 const evolution = createEvolutionClient({ url: process.env.EVOLUTION_API_URL, apiKey: process.env.EVOLUTION_API_KEY });
@@ -37,6 +44,8 @@ const app = createApp({
   mercadopago,
   publicUrl: (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, ''),
   supportPhone: process.env.SUPPORT_PHONE || '',
+  // Cuántos "saltos" de proxy hay delante (Traefik de Dokploy = 1). Sirve para saber la IP real.
+  trustProxy: Number(process.env.TRUST_PROXY ?? 1),
 });
 
 // Sirve la app ya construida (carpeta client/dist). Cualquier ruta que no sea

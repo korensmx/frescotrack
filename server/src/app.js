@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { today, addMonths, addDays, daysBetween, isValidISODate } from './dates.js';
+import { securityHeaders, rateLimit, createUserLock } from './security.js';
 
 export const DEFAULT_TEMPLATE =
   'Hola {cliente} 👋, soy {tecnico} de {negocio}. Ya pasaron {meses} meses desde el último ' +
@@ -14,6 +15,23 @@ export const DEFAULT_TEMPLATE =
 
 const SERVICE_TYPES = ['Mantenimiento preventivo', 'Instalación', 'Carga de gas', 'Reparación', 'Diagnóstico'];
 const TRIAL_DAYS = 14;
+const MAX_MONEY = 1_000_000;       // tope para precios y costos (evita números absurdos)
+const MAX_UNUSED_QR = 500;         // stickers apartados sin usar por técnico
+const MAX_SENDS_PER_DAY = 300;     // mensajes de WhatsApp por técnico al día
+
+// Límites de los "porteros". Las pruebas los suben para no estorbar.
+export const DEFAULT_LIMITS = {
+  login:    { windowMs: 15 * 60_000, max: 10 },   // 10 intentos cada 15 min por IP + correo
+  loginIp:  { windowMs: 15 * 60_000, max: 50 },   // 50 intentos cada 15 min por IP
+  register: { windowMs: 60 * 60_000, max: 5 },    // 5 cuentas por hora por IP
+  public:   { windowMs: 60_000, max: 60 },        // 60 consultas de stickers por minuto por IP
+  webhook:  { windowMs: 60_000, max: 120 },
+  api:      { windowMs: 60_000, max: 300 },       // por técnico
+  qrSheet:  { windowMs: 60 * 60_000, max: 20 },   // 20 hojas de stickers por hora por técnico
+};
+
+// Hash de mentira para que "correo no existe" tarde lo mismo que "contraseña mala".
+const DUMMY_HASH = bcrypt.hashSync('frescotrack-dummy-password', 10);
 
 // Error con código HTTP, para responder bonito.
 class HttpError extends Error {
@@ -41,6 +59,7 @@ const toInt = (value, fallback) => {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
+const toMoney = (value, fallback) => Math.min(MAX_MONEY, toInt(value, fallback));
 
 function randomQrCode() {
   // 8 caracteres fáciles de leer (sin 0/O ni 1/I para no confundirse).
@@ -58,12 +77,22 @@ export function extractQrCode(text) {
 
 export function buildMessage(template, data) {
   return (template || DEFAULT_TEMPLATE).replace(/\{(\w+)\}/g, (all, key) =>
-    data[key] !== undefined && data[key] !== null ? String(data[key]) : all);
+    Object.hasOwn(data, key) && data[key] !== undefined && data[key] !== null ? String(data[key]) : all);
 }
 
-export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopago, supportPhone = '', sendGapMs = 1500 }) {
+export function createApp({
+  db, jwtSecret, publicUrl = '', evolution, mercadopago, supportPhone = '', sendGapMs = 1500,
+  trustProxy = false, limits = DEFAULT_LIMITS,
+}) {
   const app = express();
+  app.disable('x-powered-by');
+  // Detrás de Dokploy (Traefik) la IP real viene en X-Forwarded-For.
+  app.set('trust proxy', trustProxy);
+  app.use(securityHeaders);
   app.use(express.json({ limit: '200kb' }));
+
+  const lim = { ...DEFAULT_LIMITS, ...limits };
+  const sendLock = createUserLock();
 
   // Envuelve rutas async para que los errores lleguen al manejador final.
   const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -73,6 +102,9 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
 
   // Crea un código nuevo y lo aparta para este técnico. Si por casualidad ya
   // existe, la base de datos lo rechaza (es llave única) y probamos otro.
+  const unusedQrCount = (userId) => db.prepare(`SELECT COUNT(*) AS n FROM qr_codes q
+    WHERE q.user_id = ? AND NOT EXISTS (SELECT 1 FROM equipment e WHERE e.qr_code = q.code)`).get(userId).n;
+
   function reserveNewQrCode(userId) {
     for (let i = 0; i < 10; i++) {
       const code = randomQrCode();
@@ -102,7 +134,10 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     };
   }
 
-  const signToken = (user) => jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: '30d' });
+  // "v" es la versión de las llaves del técnico: al cambiar la contraseña sube y
+  // todas las sesiones viejas (otros celulares, una robada) dejan de servir.
+  const signToken = (user) => jwt.sign({ sub: user.id, v: user.token_version }, jwtSecret,
+    { expiresIn: '30d', algorithm: 'HS256' });
 
   function equipmentRow(e) {
     const daysLeft = daysBetween(today(), e.next_service_date);
@@ -163,11 +198,16 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     price: mercadopago?.price ?? 299, supportPhone, serviceTypes: SERVICE_TYPES,
   }));
 
-  app.post('/api/auth/register', h(async (req, res) => {
+  const loginLimit = rateLimit({ ...lim.login, key: (req) => `${req.ip}|${String(req.body?.email || '').trim().toLowerCase()}` });
+  const loginIpLimit = rateLimit(lim.loginIp);
+  const registerLimit = rateLimit({ ...lim.register, message: 'Se crearon muchas cuentas desde esta conexión. Intenta más tarde.' });
+
+  app.post('/api/auth/register', registerLimit, h(async (req, res) => {
     const email = requireText(req.body.email, 'correo').toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, 'Correo no válido');
     const password = String(req.body.password || '');
     if (password.length < 8) fail(400, 'La contraseña debe tener al menos 8 caracteres');
+    if (password.length > 128) fail(400, 'La contraseña es demasiado larga');
     const name = requireText(req.body.name, 'nombre', 100);
     const phone = cleanPhone(req.body.phone);
     if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) fail(409, 'Ese correo ya tiene cuenta');
@@ -181,16 +221,17 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     res.status(201).json({ token: signToken(user), user: publicUser(user) });
   }));
 
-  app.post('/api/auth/login', h(async (req, res) => {
+  app.post('/api/auth/login', loginIpLimit, loginLimit, h(async (req, res) => {
     const email = String(req.body.email || '').trim().toLowerCase();
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    const ok = user && await bcrypt.compare(String(req.body.password || ''), user.password_hash);
-    if (!ok) fail(401, 'Correo o contraseña incorrectos');
+    // Siempre comparamos contra algo, para no delatar qué correos existen por el tiempo de respuesta.
+    const ok = await bcrypt.compare(String(req.body.password || '').slice(0, 128), user ? user.password_hash : DUMMY_HASH);
+    if (!ok || !user) fail(401, 'Correo o contraseña incorrectos');
     res.json({ token: signToken(user), user: publicUser(user) });
   }));
 
   // Lo que ve el cliente final al escanear el sticker (sin cuenta, sin precios ni su teléfono).
-  app.get('/api/public/equipment/:code', (req, res) => {
+  app.get('/api/public/equipment/:code', rateLimit(lim.public), (req, res) => {
     const code = extractQrCode(req.params.code);
     const e = code && db.prepare(`SELECT e.*, c.name AS client_name, u.name AS tech_name,
         u.business_name, u.phone AS tech_phone, u.city
@@ -211,7 +252,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
 
   // Aviso de Mercado Pago cuando una suscripción cambia (pagó, pausó, canceló).
   // Nunca confiamos en lo que dice el aviso: volvemos a preguntarle a Mercado Pago.
-  app.post('/api/billing/webhook', h(async (req, res) => {
+  app.post('/api/billing/webhook', rateLimit(lim.webhook), h(async (req, res) => {
     const type = req.body?.type || req.query.type || req.query.topic;
     const dataId = req.body?.data?.id || req.query['data.id'] || req.query.id;
     if (!mercadopago?.enabled || type !== 'subscription_preapproval' || !dataId) return res.sendStatus(200);
@@ -223,10 +264,19 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     res.sendStatus(200);
   }));
 
+  // ¿Esta suscripción es de verdad "FrescoTrack Pro" por el precio correcto?
+  // (Así otra suscripción de la misma cuenta de Mercado Pago, o una más barata, no regala Pro.)
+  const isProSubscription = (sub) => sub?.reason === 'FrescoTrack Pro' &&
+    sub?.auto_recurring?.currency_id === 'MXN' &&
+    Number(sub?.auto_recurring?.transaction_amount) >= (mercadopago?.price ?? 299);
+
   // Guarda en la base de datos lo que Mercado Pago dice de la suscripción.
   function applySubscription(sub) {
     const userId = Number(sub?.external_reference);
-    if (!userId || !getUser(userId)) return null;
+    const user = userId ? getUser(userId) : null;
+    if (!user || !isProSubscription(sub)) return null;
+    // Un aviso de una suscripción vieja (ya reemplazada) no debe quitarle Pro a quien sí pagó la nueva.
+    if (sub.status !== 'authorized' && user.mp_preapproval_id && user.mp_preapproval_id !== sub.id) return user;
     const plan = sub.status === 'authorized' ? 'pro' : 'trial';
     db.prepare('UPDATE users SET plan = ?, plan_status = ?, mp_preapproval_id = ? WHERE id = ?')
       .run(plan, sub.status, sub.id, userId);
@@ -238,9 +288,9 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     const header = req.get('authorization') || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     try {
-      const payload = jwt.verify(token, jwtSecret);
+      const payload = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
       const user = getUser(payload.sub);
-      if (!user) throw new Error('no user');
+      if (!user || (payload.v ?? 0) !== user.token_version) throw new Error('no user');
       req.user = user;
       next();
     } catch {
@@ -249,10 +299,13 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   };
   const api = express.Router();
   api.use(auth);
+  api.use(rateLimit({ ...lim.api, key: (req) => `u${req.user.id}` }));
 
   // Si la prueba gratis terminó y no ha pagado, puede ver sus datos pero no agregar ni cambiar.
+  // Ojo: /qr/sheet es GET pero aparta stickers nuevos, así que también cuenta como "cambiar".
   api.use((req, res, next) => {
-    const free = req.method === 'GET' || req.path.startsWith('/me') || req.path.startsWith('/billing');
+    const free = (req.method === 'GET' && !req.path.startsWith('/qr/')) ||
+      req.path.startsWith('/me') || req.path.startsWith('/billing');
     if (free || publicUser(req.user).active) return next();
     res.status(402).json({ error: 'Tu prueba gratis terminó. Activa FrescoTrack Pro para seguir.', code: 'subscription_required' });
   });
@@ -268,7 +321,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
       b.businessName !== undefined ? optText(b.businessName, 100) : u.business_name,
       b.phone !== undefined ? cleanPhone(b.phone) : u.phone,
       b.city !== undefined ? optText(b.city, 100) : u.city,
-      b.defaultPrice !== undefined ? toInt(b.defaultPrice, u.default_price) : u.default_price,
+      b.defaultPrice !== undefined ? toMoney(b.defaultPrice, u.default_price) : u.default_price,
       b.messageTemplate !== undefined ? (optText(b.messageTemplate, 1000) || null) : u.message_template,
       b.autoSend !== undefined ? (b.autoSend ? 1 : 0) : u.auto_send,
       b.autoSendHour !== undefined ? Math.min(23, Math.max(0, toInt(b.autoSendHour, u.auto_send_hour))) : u.auto_send_hour,
@@ -281,8 +334,11 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     if (!ok) fail(400, 'La contraseña actual no es correcta');
     const next = String(req.body.newPassword || '');
     if (next.length < 8) fail(400, 'La contraseña nueva debe tener al menos 8 caracteres');
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(await bcrypt.hash(next, 10), req.user.id);
-    res.json({ ok: true });
+    if (next.length > 128) fail(400, 'La contraseña es demasiado larga');
+    // Subir token_version cierra la sesión en todos los demás celulares.
+    db.prepare('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?')
+      .run(await bcrypt.hash(next, 10), req.user.id);
+    res.json({ ok: true, token: signToken(getUser(req.user.id)) });
   }));
 
   // ----- Clientes -----
@@ -352,7 +408,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     const serviceDate = b.serviceDate || today();
     if (!isValidISODate(serviceDate)) fail(400, 'Fecha de servicio no válida');
     const interval = Math.min(24, Math.max(1, toInt(b.intervalMonths, 6)));
-    const price = toInt(b.price, req.user.default_price);
+    const price = toMoney(b.price, req.user.default_price);
 
     db.exec('BEGIN');
     try {
@@ -375,7 +431,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
       const equipmentId = Number(r.lastInsertRowid);
       const serviceType = SERVICE_TYPES.includes(b.serviceType) ? b.serviceType : 'Mantenimiento preventivo';
       db.prepare('INSERT INTO services (equipment_id, date, type, notes, cost) VALUES (?, ?, ?, ?, ?)').run(
-        equipmentId, serviceDate, serviceType, optText(b.notes, 1000), toInt(b.cost, price));
+        equipmentId, serviceDate, serviceType, optText(b.notes, 1000), toMoney(b.cost, price));
       db.exec('COMMIT');
       res.status(201).json({ equipment: equipmentRow(ownedEquipment(req.user.id, equipmentId)) });
     } catch (err) {
@@ -407,7 +463,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
       b.refrigerant !== undefined ? optText(b.refrigerant, 20) : e.refrigerant,
       b.inverter !== undefined ? (b.inverter ? 1 : 0) : e.inverter,
       b.location !== undefined ? optText(b.location, 80) : e.location,
-      interval, b.price !== undefined ? toInt(b.price, e.price) : e.price,
+      interval, b.price !== undefined ? toMoney(b.price, e.price) : e.price,
       addMonths(e.last_service_date, interval), e.id);
     res.json({ equipment: equipmentRow(ownedEquipment(req.user.id, e.id)) });
   });
@@ -427,7 +483,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     // Si le mandamos recordatorio y regresó, ese dinero cuenta como "rescatado".
     const rescued = e.last_reminder_at ? 1 : 0;
     db.prepare('INSERT INTO services (equipment_id, date, type, notes, cost, rescued) VALUES (?, ?, ?, ?, ?, ?)').run(
-      e.id, date, type, optText(req.body.notes, 1000), toInt(req.body.cost, e.price), rescued);
+      e.id, date, type, optText(req.body.notes, 1000), toMoney(req.body.cost, e.price), rescued);
     if (date >= e.last_service_date) {
       db.prepare('UPDATE equipment SET last_service_date = ?, next_service_date = ? WHERE id = ?').run(
         date, addMonths(date, e.interval_months), e.id);
@@ -462,8 +518,11 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   });
 
   // ----- Stickers QR para imprimir -----
-  api.get('/qr/sheet', h(async (req, res) => {
+  api.get('/qr/sheet', rateLimit({ ...lim.qrSheet, key: (req) => `u${req.user.id}` }), h(async (req, res) => {
     const count = Math.min(48, Math.max(1, toInt(req.query.count, 12)));
+    if (unusedQrCount(req.user.id) + count > MAX_UNUSED_QR) {
+      fail(429, `Ya tienes muchos stickers sin usar (máximo ${MAX_UNUSED_QR}). Pega los que ya imprimiste antes de pedir más.`);
+    }
     const codes = [];
     for (let i = 0; i < count; i++) {
       const code = reserveNewQrCode(req.user.id);
@@ -494,10 +553,14 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   // Manda (o prepara) el recordatorio de un equipo.
   // Si el WhatsApp del técnico está conectado a Evolution API, sale solito.
   // Si no, devolvemos una liga wa.me para que el técnico solo presione "enviar".
+  const sentToday = (userId) => db.prepare(`SELECT COUNT(*) AS n FROM reminders r JOIN equipment e ON e.id = r.equipment_id
+    WHERE e.user_id = ? AND r.channel = 'api' AND r.sent_at >= datetime('now', '-1 day')`).get(userId).n;
+
   async function sendReminder(user, e, connected) {
     const message = reminderMessage(user, e);
     let channel = 'link';
     if (connected) {
+      if (sentToday(user.id) >= MAX_SENDS_PER_DAY) fail(429, `Llegaste al máximo de ${MAX_SENDS_PER_DAY} mensajes automáticos por día`);
       await evolution.sendText(user.id, `52${e.client_phone}`, message);
       channel = 'api';
     }
@@ -518,25 +581,37 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
   api.post('/whatsapp/send/:equipmentId', h(async (req, res) => {
     const e = ownedEquipment(req.user.id, req.params.equipmentId);
     const connected = req.body?.mode === 'link' ? false : await evolutionConnected(req.user.id);
-    res.json(await sendReminder(req.user, e, connected));
+    if (!connected) return res.json(await sendReminder(req.user, e, false));
+    if (!sendLock.tryAcquire(req.user.id)) fail(409, 'Ya se están enviando mensajes, espera a que terminen');
+    try {
+      res.json(await sendReminder(req.user, e, true));
+    } finally {
+      sendLock.release(req.user.id);
+    }
   }));
 
   // "Disparar lote de hoy": solo funciona con WhatsApp conectado.
   api.post('/whatsapp/send-batch', h(async (req, res) => {
     if (!(await evolutionConnected(req.user.id))) fail(400, 'Primero conecta tu WhatsApp en la pestaña WhatsApp');
-    const rows = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? ORDER BY e.next_service_date`).all(req.user.id)
-      .filter((e) => daysBetween(today(), e.next_service_date) <= 7 && !e.last_reminder_at).slice(0, 30);
+    // Candado: si se pica dos veces el botón (o corre el envío automático), no se duplican mensajes.
+    if (!sendLock.tryAcquire(req.user.id)) fail(409, 'Ya se están enviando mensajes, espera a que terminen');
     let sent = 0;
     const errors = [];
-    for (const e of rows) {
-      try {
-        await sendReminder(req.user, e, true);
-        sent++;
-        // Pausa corta entre mensajes para que WhatsApp no lo vea como spam.
-        await pause(sendGapMs);
-      } catch (err) {
-        errors.push({ equipmentId: e.id, error: err.message });
+    try {
+      const rows = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? ORDER BY e.next_service_date`).all(req.user.id)
+        .filter((e) => daysBetween(today(), e.next_service_date) <= 7 && !e.last_reminder_at).slice(0, 30);
+      for (const e of rows) {
+        try {
+          await sendReminder(req.user, e, true);
+          sent++;
+          // Pausa corta entre mensajes para que WhatsApp no lo vea como spam.
+          await pause(sendGapMs);
+        } catch (err) {
+          errors.push({ equipmentId: e.id, error: err.message });
+        }
       }
+    } finally {
+      sendLock.release(req.user.id);
     }
     res.json({ sent, errors });
   }));
@@ -555,7 +630,8 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
     try {
       res.json({ available: true, state: await evolution.state(req.user.id) });
     } catch (err) {
-      res.json({ available: true, state: 'error', error: err.message });
+      console.error(`Evolution status (técnico ${req.user.id}): ${err.message}`);
+      res.json({ available: true, state: 'error', error: 'No pudimos revisar tu WhatsApp, intenta en un momento' });
     }
   }));
 
@@ -618,15 +694,22 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
             ORDER BY e.next_service_date`).all(user.id, addDays(today(), -30), today())
           .filter((e) => !e.last_reminder_at).slice(0, 30);
         if (due.length === 0 || !(await evolutionConnected(user.id))) continue;
-        for (const e of due) {
-          try {
-            await sendReminder(user, e, true);
-            sent++;
-            await pause(sendGapMs);
-          } catch (err) {
-            errors++;
-            console.error(`Recordatorio automático falló (técnico ${user.id}, equipo ${e.id}): ${err.message}`);
+        if (!sendLock.tryAcquire(user.id)) continue; // el técnico está mandando a mano; lo intentamos en la siguiente vuelta
+        try {
+          for (const e of due) {
+            try {
+              // Volvemos a revisar: pudo haberse enviado a mano (o borrado) mientras esperábamos.
+              if (ownedEquipment(user.id, e.id).last_reminder_at) continue;
+              await sendReminder(user, e, true);
+              sent++;
+              await pause(sendGapMs);
+            } catch (err) {
+              errors++;
+              console.error(`Recordatorio automático falló (técnico ${user.id}, equipo ${e.id}): ${err.message}`);
+            }
           }
+        } finally {
+          sendLock.release(user.id);
         }
       }
     } finally {
@@ -640,7 +723,7 @@ export function createApp({ db, jwtSecret, publicUrl = '', evolution, mercadopag
 
   // Manejador final de errores.
   app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-    const status = err.status || (err.type === 'entity.parse.failed' ? 400 : 500);
+    const status = err.status || (err.type === 'entity.parse.failed' ? 400 : err.type === 'entity.too.large' ? 413 : 500);
     if (status >= 500) console.error(err);
     res.status(status).json({ error: status >= 500 ? 'Algo falló en el servidor' : err.message });
   });

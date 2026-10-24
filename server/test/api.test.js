@@ -19,7 +19,7 @@ const fakeEvolution = {
 const fakeMp = {
   enabled: true, price: 299,
   subs: {},
-  async createSubscription({ userId }) { const s = { id: 'sub1', status: 'pending', reason: 'FrescoTrack Pro', auto_recurring: { transaction_amount: 299, currency_id: 'MXN' }, external_reference: String(userId), init_point: 'https://mp.test/pay' }; this.subs.sub1 = s; return s; },
+  async createSubscription({ userId, email }) { this.lastEmail = email; const s = { id: 'sub1', status: 'pending', reason: 'FrescoTrack Pro', auto_recurring: { transaction_amount: 299, currency_id: 'MXN' }, external_reference: String(userId), init_point: 'https://mp.test/pay' }; this.subs.sub1 = s; return s; },
   async getSubscription(id) { return this.subs[id]; },
   async cancelSubscription(id) { this.subs[id].status = 'cancelled'; return this.subs[id]; },
   isValidSignature: () => true,
@@ -213,8 +213,10 @@ test('suscripción Mercado Pago y bloqueo al terminar la prueba', async () => {
   assert.equal(blocked.status, 402);
   assert.equal((await req('GET', '/clients', null, t)).status, 200);
 
-  const sub = await req('POST', '/billing/subscribe', {}, t);
+  assert.equal((await req('POST', '/billing/subscribe', { payerEmail: 'no-es-correo' }, t)).status, 400);
+  const sub = await req('POST', '/billing/subscribe', { payerEmail: 'Dueno.Tarjeta@Test.com' }, t);
   assert.equal(sub.body.url, 'https://mp.test/pay');
+  assert.equal(fakeMp.lastEmail, 'dueno.tarjeta@test.com');
   fakeMp.subs.sub1.status = 'authorized';
   const hook = await fetch(base + '/billing/webhook', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'subscription_preapproval', data: { id: 'sub1' } }) });
   assert.equal(hook.status, 200);

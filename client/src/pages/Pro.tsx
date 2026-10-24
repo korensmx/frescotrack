@@ -19,6 +19,7 @@ export default function Pro() {
   const [params] = useSearchParams();
   const [jobs, setJobs] = useState(5);
   const [ticket, setTicket] = useState(user?.defaultPrice ?? 750);
+  const [payerEmail, setPayerEmail] = useState(user?.email ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const price = config?.price ?? 299;
@@ -34,7 +35,7 @@ export default function Pro() {
   async function subscribe() {
     setBusy(true); setError(null);
     try {
-      const r = await api<{ url: string }>('/billing/subscribe', { method: 'POST', body: {} });
+      const r = await api<{ url: string }>('/billing/subscribe', { method: 'POST', body: { payerEmail: payerEmail.trim() } });
       window.location.href = r.url;
     } catch (err) { setError((err as Error).message); setBusy(false); }
   }
@@ -85,9 +86,14 @@ export default function Pro() {
         </ul>
         <ErrorBox message={error} />
         {config?.payments ? (
+          <>
+          <label className="mt-5 block text-sm font-semibold" htmlFor="payer-email">Correo con el que vas a pagar</label>
+          <input id="payer-email" type="email" className="input mt-1 w-full" value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} />
+          <p className="mt-1 text-xs text-muted">Mercado Pago te pedirá este mismo correo. Si pagas con la tarjeta de otra persona, pon el correo de esa persona. No necesita cuenta de Mercado Pago: puede pagar como invitado con su tarjeta.</p>
           <button className="btn-ice mt-5 w-full text-lg" onClick={subscribe} disabled={busy}>
             {busy ? <Loader2 className="animate-spin" size={18} /> : null} Suscribirme con Mercado Pago
           </button>
+          </>
         ) : (
           <p className="mt-5 rounded-xl bg-surface-2 p-3 text-center text-sm text-muted">Los pagos se activan muy pronto.</p>
         )}

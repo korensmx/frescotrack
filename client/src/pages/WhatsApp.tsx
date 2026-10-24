@@ -1,7 +1,7 @@
 // Cola de recordatorios de WhatsApp + conexión del WhatsApp Business del técnico.
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clock, KeyRound, Loader2, MessageCircle, Send, Smartphone, X, Zap } from 'lucide-react';
-import { api, prettyDate, type Equipment, type User } from '../api';
+import { api, money, prettyDate, type Equipment, type User } from '../api';
 import { useAuth } from '../auth';
 import { Empty, ErrorBox, Loading, PageTitle, StatusPill } from '../components/ui';
 
@@ -68,7 +68,7 @@ export function useSendReminder(onSent: () => void) {
 }
 
 interface QueueData {
-  queue: Equipment[];
+  queue: (Equipment & { groupCount: number; groupTotal: number })[];
   sent: { id: number; equipmentId: number; clientName: string; brand: string; location: string; channel: string; status: string; sentAt: string }[];
 }
 
@@ -126,7 +126,10 @@ export default function WhatsApp() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{e.clientName}</p>
-                    <p className="truncate text-sm text-muted">{[e.brand, e.location].filter(Boolean).join(' · ')}</p>
+                    <p className="truncate text-sm text-muted">
+                      {e.groupCount > 1 ? `${e.groupCount} equipos vencidos` : [e.brand, e.location].filter(Boolean).join(' · ')}
+                      {' · '}<span className="font-semibold text-text">{money(e.groupTotal)}</span>
+                    </p>
                   </div>
                   <StatusPill status={e.status} days={e.daysLeft} />
                 </div>

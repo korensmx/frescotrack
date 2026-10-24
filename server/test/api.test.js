@@ -294,3 +294,12 @@ test('envío automático el día que vence', async () => {
   assert.equal(after.body.user.autoSend, false);
   assert.equal(after.body.user.autoSendHour, 9);
 });
+
+test('descarga de copia de seguridad solo con la llave del dueño', async () => {
+  assert.equal((await fetch(base + '/admin/backup')).status, 401);
+  const res = await fetch(base + '/admin/backup', { headers: { Authorization: `Bearer ${ADMIN}` } });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-disposition'), /frescotrack-\d{4}-\d{2}-\d{2}\.db/);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  assert.equal(bytes.subarray(0, 15).toString(), 'SQLite format 3');
+});

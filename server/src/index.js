@@ -7,10 +7,13 @@ import { openDatabase } from './db.js';
 import { createApp } from './app.js';
 import { createEvolutionClient } from './evolution.js';
 import { createMercadoPagoClient } from './mercadopago.js';
+import { dailyBackup } from './backup.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
 const DB_FILE = process.env.DB_FILE || path.join(here, '../../data/frescotrack.db');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(path.dirname(DB_FILE), 'backups');
+const BACKUP_KEEP = Number(process.env.BACKUP_KEEP || 14);
 const CLIENT_DIST = process.env.CLIENT_DIST || path.join(here, '../../client/dist');
 
 let jwtSecret = process.env.JWT_SECRET;
@@ -73,6 +76,20 @@ const autoTick = () => app.locals.runAutoReminders()
   .catch((err) => { console.error('Envío automático falló:', err); app.locals.recordProblem('envío automático', err); });
 setTimeout(autoTick, 30 * 1000);
 setInterval(autoTick, AUTO_EVERY_MS);
+
+// Una copia de seguridad al día (se guardan las últimas 14). Revisamos cada hora
+// por si el servidor estuvo apagado a la hora de la copia.
+const backupTick = () => {
+  try {
+    const r = dailyBackup(db, BACKUP_DIR, { keep: BACKUP_KEEP });
+    if (r.created) console.log(`Copia de seguridad lista: ${r.created} (${r.kept.length} guardadas)`);
+  } catch (err) {
+    console.error('Copia de seguridad falló:', err);
+    app.locals.recordProblem('copia de seguridad', err);
+  }
+};
+setTimeout(backupTick, 60 * 1000);
+setInterval(backupTick, 60 * 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`FrescoTrack listo en el puerto ${PORT}`);

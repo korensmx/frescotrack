@@ -63,4 +63,10 @@ Pon en `ADMIN_TOKEN` una llave larga (32 caracteres o más, por ejemplo `openssl
 
 ## Respaldo
 
-La base de datos vive en el volumen `frescotrack-data` (`/app/data/frescotrack.db`). Haz copias de ese volumen desde Dokploy (Volume Backups) para no perder datos.
+La base de datos vive en el volumen `frescotrack-data` (`/app/data/frescotrack.db`).
+
+- **Copia diaria automática:** la app saca una copia al día en `/app/data/backups/` y guarda las últimas 14 (`BACKUP_KEEP` para cambiarlo). Sirve si algo se borra o se daña por error.
+- **Copia fuera del servidor:** `GET /api/admin/backup` con `Authorization: Bearer <ADMIN_TOKEN>` descarga la base completa. n8n la baja cada noche y la guarda fuera, por si se pierde el servidor entero.
+- Extra: también puedes respaldar el volumen desde Dokploy (Volume Backups).
+
+Para regresar a una copia: detén la app, reemplaza `/app/data/frescotrack.db` por la copia (y borra `frescotrack.db-wal` y `frescotrack.db-shm` si existen) y vuelve a arrancar.

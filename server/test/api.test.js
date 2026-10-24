@@ -303,3 +303,35 @@ test('descarga de copia de seguridad solo con la llave del dueño', async () => 
   const bytes = Buffer.from(await res.arrayBuffer());
   assert.equal(bytes.subarray(0, 15).toString(), 'SQLite format 3');
 });
+
+test('recordatorio: precio de la tabla y suma de equipos vencidos del mismo cliente', async () => {
+  const t = await register('suma@test.com');
+  const table = {
+    normal: { '1': 600, '1.5': 650, '2': 700, '2.5': 750, '3': 800 },
+    inverter: { '1': 800, '1.5': 850, '2': 900, '2.5': 950, '3': 1000 },
+  };
+  await req('PUT', '/me/prices', { priceTable: table }, t);
+  await req('PUT', '/me', { defaultPrice: 500 }, t);
+  const old = addMonths(addDays(today(), -3), -6);
+  const a = await req('POST', '/equipment', { clientName: 'Laura Pérez', clientPhone: '8337778899',
+    brand: 'LG', tons: '1.5 Ton', inverter: true, location: 'Sala', price: 1234, serviceDate: old }, t);
+  const c = a.body.equipment.clientId;
+  await req('POST', '/equipment', { clientId: c, brand: 'Mirage', tons: '2 Ton', location: 'Recámara', serviceDate: old }, t);
+  await req('POST', '/equipment', { clientId: c, brand: 'York', tons: '5 Ton', location: 'Cocina', serviceDate: old }, t);
+  // Uno al día: no entra en la suma
+  await req('POST', '/equipment', { clientId: c, brand: 'Carrier', tons: '1 Ton', location: 'Estudio' }, t);
+
+  const queue = (await req('GET', '/whatsapp/queue', null, t)).body.queue;
+  assert.equal(queue.length, 1, 'un solo mensaje por cliente');
+  // 850 (inverter 1.5) + 700 (normal 2) + 500 (5 tn no está en la tabla: precio base)
+  assert.equal(queue[0].groupCount, 3);
+  assert.equal(queue[0].groupTotal, 2050);
+  assert.match(queue[0].message, /\$2,050/);
+  assert.match(queue[0].message, /LG 1\.5 Ton, Mirage 2 Ton y York 5 Ton/);
+
+  const sent = await req('POST', `/whatsapp/send/${a.body.equipment.id}`, {}, t);
+  assert.match(sent.body.message, /\$2,050/);
+  const after = (await req('GET', '/whatsapp/queue', null, t)).body;
+  assert.equal(after.queue.length, 0, 'los tres equipos salen de la cola');
+  assert.equal(after.sent.filter((r) => r.clientName === 'Laura Pérez').length, 1);
+});

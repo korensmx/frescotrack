@@ -73,7 +73,10 @@ export default function Settings() {
           <textarea className="input min-h-36 py-3 text-sm" value={form.messageTemplate} onChange={set('messageTemplate')} />
         </Field>
         <p className="mb-3 text-xs text-muted">
-          Palabras mágicas que se cambian solas: {'{cliente}'} {'{tecnico}'} {'{negocio}'} {'{equipo}'} {'{ubicacion}'} {'{meses}'} {'{fecha}'}
+          Palabras mágicas que se cambian solas: {'{cliente}'} {'{tecnico}'} {'{negocio}'} {'{equipo}'} {'{ubicacion}'} {'{meses}'} {'{fecha}'} {'{precio}'}
+        </p>
+        <p className="mb-3 text-xs text-muted">
+          {'{precio}'} se calcula solo con tu tabla de precios. Si el cliente tiene varios equipos vencidos, se suman en un solo mensaje.
         </p>
         <button className="btn-ice w-full" onClick={save}>Guardar cambios</button>
       </section>

@@ -10,10 +10,20 @@ import { today, addMonths, addDays, daysBetween, isValidISODate } from './dates.
 import { securityHeaders, rateLimit, createUserLock } from './security.js';
 import { tempCopy } from './backup.js';
 
-export const DEFAULT_TEMPLATE =
+// Mensaje de antes: quien lo tenga guardado tal cual recibe el nuevo (con {precio}).
+const OLD_DEFAULT_TEMPLATE =
   'Hola {cliente} 👋, soy {tecnico} de {negocio}. Ya pasaron {meses} meses desde el último ' +
   'mantenimiento de tu minisplit {equipo} ({ubicacion}). ¿Te agendo una limpieza esta semana ' +
   'para que siga enfriando como nuevo? 🧊';
+export const DEFAULT_TEMPLATE =
+  'Hola {cliente} 👋, soy {tecnico} de {negocio}. Ya pasaron {meses} meses desde el último ' +
+  'mantenimiento de tu minisplit {equipo} ({ubicacion}). El mantenimiento te queda en {precio}. ' +
+  '¿Te agendo una limpieza esta semana para que siga enfriando como nuevo? 🧊';
+const userTemplate = (u) => (!u.message_template || u.message_template === OLD_DEFAULT_TEMPLATE
+  ? DEFAULT_TEMPLATE : u.message_template);
+
+// 1500 -> "$1,500"
+export const formatMoney = (n) => '$' + Math.round(n).toLocaleString('en-US');
 
 const SERVICE_TYPES = ['Mantenimiento preventivo', 'Instalación', 'Carga de gas', 'Reparación', 'Diagnóstico'];
 const TRIAL_DAYS = 14;
@@ -176,7 +186,7 @@ export function createApp({
       id: u.id, email: u.email, name: u.name, businessName: u.business_name,
       phone: u.phone, city: u.city, defaultPrice: u.default_price,
       priceTable: readPriceTable(u.price_table, u.default_price),
-      messageTemplate: u.message_template || DEFAULT_TEMPLATE,
+      messageTemplate: userTemplate(u),
       autoSend: Boolean(u.auto_send), autoSendHour: u.auto_send_hour,
       plan: u.plan, planStatus: u.plan_status || null, trialEndsAt: u.trial_ends_at, trialDaysLeft,
       active: u.plan === 'pro' || trialDaysLeft > 0,
@@ -227,15 +237,32 @@ export function createApp({
     equipmentCount: c.equipment_count ?? undefined, nextServiceDate: c.next_service_date ?? undefined,
   });
 
-  function reminderMessage(user, e) {
-    return buildMessage(user.message_template, {
+  // ¿Este equipo ya toca recordatorio? (vence en 7 días o menos y no le hemos escrito)
+  const needsReminder = (e) => daysBetween(today(), e.next_service_date) <= 7 && !e.last_reminder_at;
+
+  // Todos los equipos de ese cliente que tocan recordatorio, para mandarle UN solo
+  // mensaje con el precio sumado. Siempre incluye el equipo que se pidió.
+  function reminderGroup(user, e) {
+    const others = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? AND e.client_id = ? AND e.id != ?
+        ORDER BY e.next_service_date, e.id`).all(user.id, e.client_id, e.id).filter(needsReminder);
+    return [e, ...others];
+  }
+
+  // El precio sale de la tabla del técnico (Normal/Inverter y toneladas).
+  // Si el equipo no tiene una medida de la tabla, se usa el precio base.
+  const reminderTotal = (user, group) => group.reduce((sum, e) => sum + priceFor(user, e.tons, e.inverter), 0);
+
+  function reminderMessage(user, e, group = reminderGroup(user, e)) {
+    const andJoin = (list) => list.length > 1 ? `${list.slice(0, -1).join(', ')} y ${list.at(-1)}` : list[0];
+    return buildMessage(userTemplate(user), {
       cliente: e.client_name.split(' ')[0],
       tecnico: user.name.split(' ')[0],
       negocio: user.business_name || user.name,
       meses: e.interval_months,
-      equipo: [e.brand, e.tons].filter(Boolean).join(' ') || 'minisplit',
-      ubicacion: e.location || 'tu casa',
+      equipo: andJoin(group.map((g) => [g.brand, g.tons].filter(Boolean).join(' ') || 'minisplit')),
+      ubicacion: andJoin([...new Set(group.map((g) => g.location || 'tu casa'))]),
       fecha: e.next_service_date,
+      precio: formatMoney(reminderTotal(user, group)),
     });
   }
 
@@ -697,11 +724,19 @@ export function createApp({
   // ----- WhatsApp -----
   api.get('/whatsapp/queue', (req, res) => {
     const rows = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? ORDER BY e.next_service_date`).all(req.user.id);
-    const queue = rows.filter((e) => daysBetween(today(), e.next_service_date) <= 7 && !e.last_reminder_at)
-      .map((e) => ({ ...equipmentRow(e), message: reminderMessage(req.user, e) }));
+    // Un solo mensaje por cliente, aunque tenga varios equipos vencidos.
+    const seen = new Set();
+    const queue = rows.filter(needsReminder).filter((e) => !seen.has(e.client_id) && seen.add(e.client_id))
+      .map((e) => {
+        const group = reminderGroup(req.user, e);
+        return { ...equipmentRow(e), message: reminderMessage(req.user, e, group),
+          groupCount: group.length, groupTotal: reminderTotal(req.user, group) };
+      });
     const sent = db.prepare(`SELECT r.*, c.name AS client_name, e.brand, e.location FROM reminders r
         JOIN equipment e ON e.id = r.equipment_id JOIN clients c ON c.id = e.client_id
-        WHERE e.user_id = ? ORDER BY r.sent_at DESC LIMIT 30`).all(req.user.id)
+        WHERE e.user_id = ? ORDER BY r.sent_at DESC, r.id LIMIT 60`).all(req.user.id)
+      // Un mensaje que cubrió varios equipos del mismo cliente se muestra una sola vez.
+      .filter((r, i, all) => all.findIndex((o) => o.sent_at === r.sent_at && o.message === r.message) === i).slice(0, 30)
       .map((r) => ({ id: r.id, equipmentId: r.equipment_id, clientName: r.client_name, brand: r.brand,
         location: r.location, channel: r.channel, status: r.status, sentAt: r.sent_at }));
     res.json({ queue, sent });
@@ -718,15 +753,18 @@ export function createApp({
   const sentToday = (userId) => db.prepare(`SELECT COUNT(*) AS n FROM reminders r JOIN equipment e ON e.id = r.equipment_id
     WHERE e.user_id = ? AND r.channel = 'api' AND r.sent_at >= datetime('now', '-1 day')`).get(userId).n;
 
+  // Si el cliente tiene varios equipos vencidos, va un solo mensaje y todos salen de la cola.
   async function sendReminder(user, e, connected) {
-    const message = reminderMessage(user, e);
+    const group = reminderGroup(user, e);
+    const message = reminderMessage(user, e, group);
     let channel = 'link';
     if (connected) {
       if (sentToday(user.id) >= MAX_SENDS_PER_DAY) fail(429, `Llegaste al máximo de ${MAX_SENDS_PER_DAY} mensajes automáticos por día`);
       await evolution.sendText(user.id, `52${e.client_phone}`, message);
       channel = 'api';
     }
-    db.prepare("INSERT INTO reminders (equipment_id, channel, status, message) VALUES (?, ?, 'sent', ?)").run(e.id, channel, message);
+    const insert = db.prepare("INSERT INTO reminders (equipment_id, channel, status, message) VALUES (?, ?, 'sent', ?)");
+    for (const g of group) insert.run(g.id, channel, message);
     return { channel, message, waUrl: `https://wa.me/52${e.client_phone}?text=${encodeURIComponent(message)}` };
   }
 
@@ -761,9 +799,11 @@ export function createApp({
     const errors = [];
     try {
       const rows = db.prepare(`${EQUIPMENT_SELECT} WHERE e.user_id = ? ORDER BY e.next_service_date`).all(req.user.id)
-        .filter((e) => daysBetween(today(), e.next_service_date) <= 7 && !e.last_reminder_at).slice(0, 30);
+        .filter(needsReminder).slice(0, 30);
       for (const e of rows) {
         try {
+          // Pudo salir junto con otro equipo del mismo cliente.
+          if (ownedEquipment(req.user.id, e.id).last_reminder_at) continue;
           await sendReminder(req.user, e, true);
           sent++;
           // Pausa corta entre mensajes para que WhatsApp no lo vea como spam.
@@ -779,11 +819,13 @@ export function createApp({
   }));
 
   api.put('/whatsapp/reminders/:id', (req, res) => {
-    const r = db.prepare(`SELECT r.id FROM reminders r JOIN equipment e ON e.id = r.equipment_id
+    const r = db.prepare(`SELECT r.id, r.sent_at, r.message, e.client_id FROM reminders r JOIN equipment e ON e.id = r.equipment_id
       WHERE r.id = ? AND e.user_id = ?`).get(req.params.id, req.user.id);
     if (!r) fail(404, 'Recordatorio no encontrado');
     const status = ['sent', 'confirmed', 'no_answer'].includes(req.body.status) ? req.body.status : 'sent';
-    db.prepare('UPDATE reminders SET status = ? WHERE id = ?').run(status, r.id);
+    // También a los demás equipos que iban en el mismo mensaje.
+    db.prepare(`UPDATE reminders SET status = ? WHERE sent_at = ? AND message = ?
+      AND equipment_id IN (SELECT id FROM equipment WHERE client_id = ?)`).run(status, r.sent_at, r.message, r.client_id);
     res.json({ ok: true });
   });
 

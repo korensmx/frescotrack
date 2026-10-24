@@ -7,6 +7,7 @@ import { createMercadoPagoClient } from '../src/mercadopago.js';
 import crypto from 'node:crypto';
 
 let server, base, db, app;
+const ADMIN = 'llave-de-prueba-del-dueno-0123456789';
 const sentMessages = [];
 const fakeEvolution = {
   enabled: true,
@@ -26,7 +27,7 @@ const fakeMp = {
 
 before(async () => {
   db = openDatabase(':memory:');
-  app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp, sendGapMs: 0,
+  app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp, sendGapMs: 0, adminToken: ADMIN,
     limits: Object.fromEntries(Object.entries(DEFAULT_LIMITS).map(([k, v]) => [k, { ...v, max: 10_000 }])) });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -224,6 +225,29 @@ test('suscripción Mercado Pago y bloqueo al terminar la prueba', async () => {
   const cancel = await req('POST', '/billing/cancel', {}, t);
   assert.equal(cancel.body.user.plan, 'trial');
   assert.equal(cancel.body.user.active, false);
+});
+
+test('reporte del dueño: ventas y fallas', async () => {
+  assert.equal((await req('GET', '/admin/stats')).status, 401);
+  assert.equal((await req('GET', '/admin/stats', null, 'llave-equivocada')).status, 401);
+  const r = await req('GET', '/admin/stats?days=7', null, ADMIN);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.periodDays, 7);
+  assert.ok(r.body.users.total >= 1);
+  // Sofía (prueba de arriba) pagó y luego canceló esta misma semana.
+  assert.ok(r.body.sales.newProInPeriod >= 1);
+  assert.ok(r.body.sales.cancelledInPeriod >= 1);
+  assert.ok(r.body.sales.newProList.some((u) => u.email === 'sofia@test.com'));
+  assert.equal(r.body.sales.mrr, r.body.sales.proActive * 299);
+  assert.equal(typeof r.body.server.errorsSinceStart, 'number');
+  assert.equal((await req('GET', '/health')).body.ok, true);
+
+  // Sin llave configurada, la puerta no existe.
+  const closed = createApp({ db, jwtSecret: 'test' });
+  const s2 = await new Promise((ok) => { const s = closed.listen(0, () => ok(s)); });
+  const res = await fetch(`http://127.0.0.1:${s2.address().port}/api/admin/stats`, { headers: { Authorization: `Bearer ${ADMIN}` } });
+  assert.equal(res.status, 404);
+  s2.close();
 });
 
 test('firma del webhook de Mercado Pago', () => {

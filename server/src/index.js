@@ -30,6 +30,10 @@ if (process.env.MP_ACCESS_TOKEN && !process.env.MP_WEBHOOK_SECRET) {
   console.warn('Aviso: falta MP_WEBHOOK_SECRET. Los avisos de Mercado Pago no se pueden comprobar con firma.');
 }
 
+if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 32) {
+  console.warn('Aviso: ADMIN_TOKEN es muy corto (mínimo 32 caracteres). El reporte de /api/admin/stats queda apagado.');
+}
+
 const db = openDatabase(DB_FILE);
 const evolution = createEvolutionClient({ url: process.env.EVOLUTION_API_URL, apiKey: process.env.EVOLUTION_API_KEY });
 const mercadopago = createMercadoPagoClient({
@@ -46,6 +50,8 @@ const app = createApp({
   supportPhone: process.env.SUPPORT_PHONE || '',
   // Cuántos "saltos" de proxy hay delante (Traefik de Dokploy = 1). Sirve para saber la IP real.
   trustProxy: Number(process.env.TRUST_PROXY ?? 1),
+  // Llave para que n8n lea el reporte de ventas y fallas (/api/admin/stats).
+  adminToken: (process.env.ADMIN_TOKEN?.length ?? 0) >= 32 ? process.env.ADMIN_TOKEN : '',
 });
 
 // Sirve la app ya construida (carpeta client/dist). Cualquier ruta que no sea
@@ -60,8 +66,11 @@ app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(CLIENT_DIST, 'index
 // Cada 10 minutos revisamos si hay recordatorios que deban salir solos.
 const AUTO_EVERY_MS = 10 * 60 * 1000;
 const autoTick = () => app.locals.runAutoReminders()
-  .then((r) => { if (r.sent || r.errors) console.log(`Envío automático: ${r.sent} enviados, ${r.errors} con error`); })
-  .catch((err) => console.error('Envío automático falló:', err));
+  .then((r) => {
+    if (r.sent || r.errors) console.log(`Envío automático: ${r.sent} enviados, ${r.errors} con error`);
+    if (r.errors) app.locals.recordProblem('envío automático', `${r.errors} recordatorios no salieron`);
+  })
+  .catch((err) => { console.error('Envío automático falló:', err); app.locals.recordProblem('envío automático', err); });
 setTimeout(autoTick, 30 * 1000);
 setInterval(autoTick, AUTO_EVERY_MS);
 

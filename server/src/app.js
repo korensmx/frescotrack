@@ -117,7 +117,7 @@ export function buildMessage(template, data) {
 
 export function createApp({
   db, jwtSecret, publicUrl = '', evolution, mercadopago, supportPhone = '', sendGapMs = 1500,
-  trustProxy = false, limits = DEFAULT_LIMITS,
+  trustProxy = false, limits = DEFAULT_LIMITS, adminToken = '',
 }) {
   const app = express();
   app.disable('x-powered-by');
@@ -127,6 +127,17 @@ export function createApp({
   app.use(express.json({ limit: '200kb' }));
 
   const lim = { ...DEFAULT_LIMITS, ...limits };
+
+  // Libreta de fallas: cuántos errores del servidor van y cuál fue el último.
+  // n8n la lee cada rato para avisarle a Jerry si algo se está rompiendo.
+  const startedAt = new Date();
+  const problems = { count: 0, last: null, recent: [] };
+  const recordProblem = (where, err) => {
+    problems.count++;
+    problems.last = { at: new Date().toISOString(), where, message: String(err?.message || err).slice(0, 300) };
+    problems.recent = [problems.last, ...problems.recent].slice(0, 10);
+  };
+  app.locals.recordProblem = recordProblem;
   const sendLock = createUserLock();
 
   // Envuelve rutas async para que los errores lleguen al manejador final.
@@ -227,7 +238,16 @@ export function createApp({
   }
 
   // ---------- Rutas públicas ----------
-  app.get('/api/health', (req, res) => res.json({ ok: true }));
+  // Además de contestar, revisa que la base de datos responda.
+  app.get('/api/health', (req, res) => {
+    try {
+      db.prepare('SELECT 1').get();
+      res.json({ ok: true });
+    } catch (err) {
+      recordProblem('health', err);
+      res.status(503).json({ ok: false, error: 'La base de datos no responde' });
+    }
+  });
 
   app.get('/api/config', (req, res) => res.json({
     whatsappApi: Boolean(evolution?.enabled), payments: Boolean(mercadopago?.enabled),
@@ -316,8 +336,70 @@ export function createApp({
     const plan = sub.status === 'authorized' ? 'pro' : 'trial';
     db.prepare('UPDATE users SET plan = ?, plan_status = ?, mp_preapproval_id = ? WHERE id = ?')
       .run(plan, sub.status, sub.id, userId);
+    // Apuntamos cuándo empezó o dejó de pagar, para contar ventas por semana.
+    if (plan === 'pro' && user.plan !== 'pro') {
+      db.prepare("UPDATE users SET pro_since = datetime('now'), pro_ended_at = NULL WHERE id = ?").run(userId);
+    } else if (plan !== 'pro' && user.plan === 'pro') {
+      db.prepare("UPDATE users SET pro_ended_at = datetime('now') WHERE id = ?").run(userId);
+    }
     return getUser(userId);
   }
+
+  // ---------- Reporte para el dueño (Jerry) ----------
+  // Solo con la llave ADMIN_TOKEN. Si no hay llave configurada, la puerta ni existe.
+  const isAdmin = (req) => {
+    const header = req.get('authorization') || '';
+    const given = Buffer.from(header.startsWith('Bearer ') ? header.slice(7) : '');
+    const expected = Buffer.from(adminToken);
+    return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+  };
+
+  app.get('/api/admin/stats', rateLimit(lim.webhook), (req, res) => {
+    if (!adminToken) return res.status(404).json({ error: 'Ruta no encontrada' });
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Llave incorrecta' });
+    const days = Math.min(90, Math.max(1, toInt(req.query.days, 7)));
+    const since = `-${days} days`;
+    const count = (sql, ...args) => db.prepare(sql).get(...args).n;
+    const price = mercadopago?.price ?? 299;
+    const proActive = count("SELECT COUNT(*) AS n FROM users WHERE plan = 'pro'");
+    res.json({
+      generatedAt: new Date().toISOString(),
+      periodDays: days,
+      price,
+      users: {
+        total: count('SELECT COUNT(*) AS n FROM users'),
+        newInPeriod: count("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now', ?)", since),
+        trialActive: count("SELECT COUNT(*) AS n FROM users WHERE plan = 'trial' AND trial_ends_at >= ?", today()),
+        trialEndingSoon: count("SELECT COUNT(*) AS n FROM users WHERE plan = 'trial' AND trial_ends_at BETWEEN ? AND ?", today(), addDays(today(), 3)),
+      },
+      sales: {
+        proActive,
+        mrr: proActive * price,
+        newProInPeriod: count("SELECT COUNT(*) AS n FROM users WHERE pro_since >= datetime('now', ?)", since),
+        cancelledInPeriod: count("SELECT COUNT(*) AS n FROM users WHERE plan <> 'pro' AND pro_ended_at >= datetime('now', ?)", since),
+        newProList: db.prepare(`SELECT name, business_name AS businessName, city, email, pro_since AS proSince
+          FROM users WHERE pro_since >= datetime('now', ?) ORDER BY pro_since DESC LIMIT 20`).all(since),
+      },
+      usage: {
+        equipmentTotal: count('SELECT COUNT(*) AS n FROM equipment'),
+        equipmentNewInPeriod: count("SELECT COUNT(*) AS n FROM equipment WHERE created_at >= datetime('now', ?)", since),
+        servicesInPeriod: count("SELECT COUNT(*) AS n FROM services WHERE created_at >= datetime('now', ?)", since),
+        rescuedInPeriod: count("SELECT COUNT(*) AS n FROM services WHERE rescued = 1 AND created_at >= datetime('now', ?)", since),
+        remindersInPeriod: count("SELECT COUNT(*) AS n FROM reminders WHERE sent_at >= datetime('now', ?)", since),
+        activeTechsInPeriod: count(`SELECT COUNT(DISTINCT e.user_id) AS n FROM services s JOIN equipment e ON e.id = s.equipment_id
+          WHERE s.created_at >= datetime('now', ?)`, since),
+      },
+      server: {
+        startedAt: startedAt.toISOString(),
+        uptimeHours: Math.round((Date.now() - startedAt) / 36e5 * 10) / 10,
+        whatsappApi: Boolean(evolution?.enabled),
+        payments: Boolean(mercadopago?.enabled),
+        errorsSinceStart: problems.count,
+        lastError: problems.last,
+        recentErrors: problems.recent,
+      },
+    });
+  });
 
   // ---------- A partir de aquí, solo con sesión iniciada ----------
   const auth = (req, res, next) => {
@@ -790,7 +872,7 @@ export function createApp({
   // Manejador final de errores.
   app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
     const status = err.status || (err.type === 'entity.parse.failed' ? 400 : err.type === 'entity.too.large' ? 413 : 500);
-    if (status >= 500) console.error(err);
+    if (status >= 500) { console.error(err); recordProblem(`${req.method} ${req.path}`, err); }
     res.status(status).json({ error: status >= 500 ? 'Algo falló en el servidor' : err.message });
   });
 

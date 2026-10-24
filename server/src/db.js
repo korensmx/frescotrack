@@ -89,6 +89,8 @@ const NEW_COLUMNS = [
   ['users', 'auto_send_hour', 'INTEGER NOT NULL DEFAULT 10'], // hora del día para mandarlos
   ['users', 'token_version', 'INTEGER NOT NULL DEFAULT 0'],   // sube al cambiar contraseña = cierra otras sesiones
   ['users', 'price_table', 'TEXT'],                            // precios por tipo y tonelaje (JSON)
+  ['users', 'pro_since', 'TEXT'],                             // cuándo empezó a pagar Pro (para el reporte de ventas)
+  ['users', 'pro_ended_at', 'TEXT'],                          // cuándo dejó de pagar Pro
 ];
 
 function migrate(db) {

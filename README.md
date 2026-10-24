@@ -57,6 +57,10 @@ Pon `EVOLUTION_API_URL` y `EVOLUTION_API_KEY` de tu Evolution API. Cada técnico
 
 Cuando el técnico paga, Mercado Pago avisa al servidor y su cuenta pasa a Pro sola. Si se acaba la prueba y no ha pagado, puede ver sus datos pero no agregar ni cambiar nada.
 
+### Reporte de ventas y alertas de fallas (n8n)
+
+Pon en `ADMIN_TOKEN` una llave larga (32 caracteres o más, por ejemplo `openssl rand -hex 32`). Con ella n8n puede leer `GET /api/admin/stats?days=7` con el encabezado `Authorization: Bearer <ADMIN_TOKEN>`: técnicos nuevos, suscripciones Pro nuevas y canceladas, ingreso mensual, uso de la app y errores del servidor. Sin la llave, esa ruta no existe.
+
 ## Respaldo
 
 La base de datos vive en el volumen `frescotrack-data` (`/app/data/frescotrack.db`). Haz copias de ese volumen desde Dokploy (Volume Backups) para no perder datos.

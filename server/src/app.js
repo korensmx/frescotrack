@@ -799,7 +799,10 @@ export function createApp({
   api.post('/billing/subscribe', h(async (req, res) => {
     if (!mercadopago?.enabled) fail(400, 'Los pagos todavía no están activados en el servidor');
     if (req.user.plan === 'pro') fail(400, 'Ya tienes FrescoTrack Pro activo');
+    // Mercado Pago solo deja pagar a quien use este mismo correo. Por eso el técnico
+    // puede poner otro (por ejemplo, el de la persona dueña de la tarjeta).
     const email = optText(req.body?.payerEmail, 200).toLowerCase() || req.user.email;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail(400, 'Correo de pago no válido');
     const sub = await mercadopago.createSubscription({
       userId: req.user.id, email, backUrl: `${publicUrl}/pro?pago=listo`,
     });

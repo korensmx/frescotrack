@@ -25,6 +25,7 @@ services:
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       PRO_PRICE_MXN: ${PRO_PRICE_MXN:-299}
       SUPPORT_PHONE: ${SUPPORT_PHONE:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
     volumes:
       # Aquí vive la base de datos. NO lo borres: son los datos de todos los técnicos.
       - frescotrack-data:/app/data

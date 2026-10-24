@@ -4,9 +4,11 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import QRCode from 'qrcode';
 import { today, addMonths, addDays, daysBetween, isValidISODate } from './dates.js';
 import { securityHeaders, rateLimit, createUserLock } from './security.js';
+import { tempCopy } from './backup.js';
 
 export const DEFAULT_TEMPLATE =
   'Hola {cliente} 👋, soy {tecnico} de {negocio}. Ya pasaron {meses} meses desde el último ' +
@@ -399,6 +401,18 @@ export function createApp({
         recentErrors: problems.recent,
       },
     });
+  });
+
+  // Descarga una copia completa de la base de datos (para guardarla fuera del servidor).
+  // n8n la baja cada noche con la misma llave ADMIN_TOKEN.
+  app.get('/api/admin/backup', rateLimit(lim.webhook), (req, res, next) => {
+    if (!adminToken) return res.status(404).json({ error: 'Ruta no encontrada' });
+    if (!isAdmin(req)) return res.status(401).json({ error: 'Llave incorrecta' });
+    let file;
+    try { file = tempCopy(db); } catch (err) { return next(err); }
+    const name = `frescotrack-${today()}.db`;
+    res.set('Cache-Control', 'no-store');
+    res.download(file, name, () => fs.rm(file, { force: true }, () => {}));
   });
 
   // ---------- A partir de aquí, solo con sesión iniciada ----------

@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../src/db.js';
-import { createApp, extractQrCode, buildMessage } from '../src/app.js';
+import { createApp, extractQrCode, buildMessage, DEFAULT_LIMITS } from '../src/app.js';
 import { addMonths, addDays, today } from '../src/dates.js';
 import { createMercadoPagoClient } from '../src/mercadopago.js';
 import crypto from 'node:crypto';
@@ -18,7 +18,7 @@ const fakeEvolution = {
 const fakeMp = {
   enabled: true, price: 299,
   subs: {},
-  async createSubscription({ userId }) { const s = { id: 'sub1', status: 'pending', external_reference: String(userId), init_point: 'https://mp.test/pay' }; this.subs.sub1 = s; return s; },
+  async createSubscription({ userId }) { const s = { id: 'sub1', status: 'pending', reason: 'FrescoTrack Pro', auto_recurring: { transaction_amount: 299, currency_id: 'MXN' }, external_reference: String(userId), init_point: 'https://mp.test/pay' }; this.subs.sub1 = s; return s; },
   async getSubscription(id) { return this.subs[id]; },
   async cancelSubscription(id) { this.subs[id].status = 'cancelled'; return this.subs[id]; },
   isValidSignature: () => true,
@@ -26,7 +26,8 @@ const fakeMp = {
 
 before(async () => {
   db = openDatabase(':memory:');
-  app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp, sendGapMs: 0 });
+  app = createApp({ db, jwtSecret: 'test', publicUrl: 'https://app.test', evolution: fakeEvolution, mercadopago: fakeMp, sendGapMs: 0,
+    limits: Object.fromEntries(Object.entries(DEFAULT_LIMITS).map(([k, v]) => [k, { ...v, max: 10_000 }])) });
   await new Promise((r) => { server = app.listen(0, r); });
   base = `http://127.0.0.1:${server.address().port}/api`;
 });

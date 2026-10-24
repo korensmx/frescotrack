@@ -1,7 +1,7 @@
 // Ajustes del perfil del técnico: datos, precio, mensaje de WhatsApp y contraseña.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, LogOut, Printer } from 'lucide-react';
+import { Crown, LogOut, Printer, Tags } from 'lucide-react';
 import { api, money, prettyDate, setToken, type User } from '../api';
 import { useAuth } from '../auth';
 import { ErrorBox, Field, PageTitle, PoweredBy } from '../components/ui';
@@ -50,6 +50,14 @@ export default function Settings() {
         <span className="text-sm font-semibold text-ice">Ver</span>
       </Link>
 
+      <Link to="/ajustes/precios" className="card flex items-center justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 font-semibold"><Tags size={18} className="text-ice" /> Precios del mantenimiento</p>
+          <p className="text-sm text-muted">Normal o Inverter, de 1 a 3 toneladas</p>
+        </div>
+        <span className="text-sm font-semibold text-ice">Editar</span>
+      </Link>
+
       <Link to="/stickers" className="btn-ghost w-full"><Printer size={18} /> Imprimir stickers QR</Link>
 
       <section className="card">
@@ -58,7 +66,7 @@ export default function Settings() {
         <Field label="Nombre del negocio"><input className="input" value={form.businessName} onChange={set('businessName')} /></Field>
         <Field label="Tu WhatsApp"><input className="input" type="tel" value={form.phone} onChange={set('phone')} /></Field>
         <Field label="Ciudad"><input className="input" value={form.city} onChange={set('city')} /></Field>
-        <Field label={`Precio normal del mantenimiento (${money(Number(form.defaultPrice) || 0)})`}>
+        <Field label={`Precio base, para equipos fuera de la tabla (${money(Number(form.defaultPrice) || 0)})`}>
           <input className="input" type="number" inputMode="numeric" value={form.defaultPrice} onChange={set('defaultPrice')} />
         </Field>
         <Field label="Mensaje de recordatorio">

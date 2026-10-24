@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Keyboard, PartyPopper } from 'lucide-react';
-import { api, money, prettyDate, todayISO, type Client, type Equipment } from '../api';
+import { api, money, prettyDate, priceFor, todayISO, type Client, type Equipment } from '../api';
 import { useAuth } from '../auth';
 import QrScanner from '../components/QrScanner';
 import { Chips, ErrorBox, Field, PageTitle } from '../components/ui';
@@ -72,13 +72,21 @@ function RegisterForm({ code, onBack }: { code: string | null; onBack: () => voi
   const [f, setF] = useState({
     clientId: 0, clientName: '', clientPhone: '', clientAddress: '',
     location: 'Recámara', brand: 'Mirage', tons: '1.5 Ton', inverter: true, refrigerant: 'R410A',
-    serviceType: 'Mantenimiento preventivo', serviceDate: todayISO(), cost: String(user?.defaultPrice ?? 750),
+    serviceType: 'Mantenimiento preventivo', serviceDate: todayISO(), cost: String(priceFor(user, '1.5 Ton', true)),
     intervalMonths: 6, notes: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<Equipment | null>(null);
+  // Si el técnico escribe el cobro a mano, ya no lo cambiamos solos.
+  const [costTouched, setCostTouched] = useState(false);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((prev) => ({ ...prev, [k]: v }));
+  const tablePrice = priceFor(user, f.tons, f.inverter);
+
+  // Al cambiar el tonelaje o el tipo, el cobro se llena con el precio de la tabla.
+  useEffect(() => {
+    if (!costTouched) setF((prev) => ({ ...prev, cost: String(tablePrice) }));
+  }, [tablePrice, costTouched]);
 
   useEffect(() => { api<{ clients: Client[] }>('/clients').then((r) => setClients(r.clients)).catch(() => {}); }, []);
 
@@ -99,7 +107,7 @@ function RegisterForm({ code, onBack }: { code: string | null; onBack: () => voi
       const body = {
         qrCode: code, ...(clientMode === 'existing' ? { clientId: f.clientId } : { clientName: f.clientName, clientPhone: f.clientPhone, clientAddress: f.clientAddress }),
         location: f.location, brand: f.brand, tons: f.tons, inverter: f.inverter, refrigerant: f.refrigerant,
-        serviceType: f.serviceType, serviceDate: f.serviceDate, cost: Number(f.cost) || 0, price: Number(f.cost) || 0,
+        serviceType: f.serviceType, serviceDate: f.serviceDate, cost: Number(f.cost) || 0, price: tablePrice,
         intervalMonths: f.intervalMonths, notes: f.notes,
       };
       const r = await api<{ equipment: Equipment }>('/equipment', { method: 'POST', body });
@@ -173,7 +181,7 @@ function RegisterForm({ code, onBack }: { code: string | null; onBack: () => voi
           <Field label="Servicio"><Chips value={f.serviceType} onChange={(v) => set('serviceType', v)} options={(config?.serviceTypes ?? ['Mantenimiento preventivo']).map((s) => ({ label: s, value: s }))} /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Fecha"><input className="input" type="date" value={f.serviceDate} onChange={(e) => set('serviceDate', e.target.value)} /></Field>
-            <Field label="Cobro (MXN)"><input className="input" type="number" inputMode="numeric" value={f.cost} onChange={(e) => set('cost', e.target.value)} /></Field>
+            <Field label="Cobro (MXN)"><input className="input" type="number" inputMode="numeric" value={f.cost} onChange={(e) => { setCostTouched(true); set('cost', e.target.value); }} /></Field>
           </div>
           <Field label="Recordarme en">
             <Chips value={f.intervalMonths} onChange={(v) => set('intervalMonths', v)} options={[
@@ -181,7 +189,9 @@ function RegisterForm({ code, onBack }: { code: string | null; onBack: () => voi
             ]} />
           </Field>
           <Field label="Notas (opcional)"><textarea className="input min-h-20 py-3" value={f.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Presión, piezas cambiadas…" /></Field>
-          <p className="pb-2 text-sm text-muted">Próximo servicio sugerido: <b className="text-text">{money(Number(f.cost) || 0)}</b></p>
+          <p className="pb-2 text-sm text-muted">
+            Precio de tu tabla para {f.inverter ? 'Inverter' : 'Normal'} de {f.tons}: <b className="text-text">{money(tablePrice)}</b>. Los cambias en Ajustes → Precios.
+          </p>
         </div>
       )}
 

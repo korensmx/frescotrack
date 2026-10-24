@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../src/db.js';
-import { createApp, extractQrCode, buildMessage, DEFAULT_LIMITS } from '../src/app.js';
+import { createApp, extractQrCode, buildMessage, tonsKey, DEFAULT_LIMITS } from '../src/app.js';
 import { addMonths, addDays, today } from '../src/dates.js';
 import { createMercadoPagoClient } from '../src/mercadopago.js';
 import crypto from 'node:crypto';
@@ -125,6 +125,55 @@ test('equipo: alta, radar, servicio, historial y vista pública', async () => {
   assert.equal(pub.body.technician.businessName, 'Climas del Golfo');
   assert.equal(pub.body.clientPhone, undefined);
   assert.equal(pub.body.services[0].cost, undefined);
+});
+
+test('precios por tipo de minisplit y tonelaje', async () => {
+  assert.equal(tonsKey('1.5 Ton'), '1.5');
+  assert.equal(tonsKey('3 Ton'), '3');
+  assert.equal(tonsKey('5 Ton'), null);
+  assert.equal(tonsKey(''), null);
+
+  const t = await register('precios@test.com');
+  // Sin configurar, todas las casillas usan el precio normal (750)
+  const me = await req('GET', '/me', null, t);
+  assert.equal(me.body.user.priceTable.normal['1'], 750);
+  assert.equal(me.body.user.priceTable.inverter['3'], 750);
+
+  // Un equipo registrado antes de cambiar los precios
+  const before = await req('POST', '/equipment', { clientName: 'Luisa', clientPhone: '8332223344', tons: '2 Ton', inverter: true }, t);
+  assert.equal(before.body.equipment.price, 750);
+
+  const table = {
+    normal: { '1': 600, '1.5': 650, '2': 700, '2.5': 750, '3': 800 },
+    inverter: { '1': 700, '1.5': 750, '2': 850, '2.5': 900, '3': 950 },
+  };
+  const saved = await req('PUT', '/me/prices', { priceTable: table, applyToEquipment: true }, t);
+  assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  assert.deepEqual(saved.body.user.priceTable, table);
+  assert.equal(saved.body.updatedEquipment, 1);
+  assert.equal((await req('GET', `/equipment/${before.body.equipment.id}`, null, t)).body.equipment.price, 850);
+
+  // Al dar de alta un equipo sin precio, se toma de la tabla
+  const conv = await req('POST', '/equipment', { clientName: 'Mario', clientPhone: '8334445566', tons: '1.5 Ton', inverter: false }, t);
+  assert.equal(conv.body.equipment.price, 650);
+  const hist = await req('GET', `/equipment/${conv.body.equipment.id}`, null, t);
+  assert.equal(hist.body.services[0].cost, 650);
+  // Si el técnico escribe otro precio, se respeta
+  const custom = await req('POST', '/equipment', { clientName: 'Sofía', clientPhone: '8335556677', tons: '3 Ton', inverter: true, price: 1200 }, t);
+  assert.equal(custom.body.equipment.price, 1200);
+  // Medida fuera de la tabla: usa el precio normal
+  const other = await req('POST', '/equipment', { clientName: 'Iván', clientPhone: '8336667788', tons: '5 Ton' }, t);
+  assert.equal(other.body.equipment.price, 750);
+
+  // Si le cambio el tipo al equipo, el precio se ajusta a la tabla
+  const edited = await req('PUT', `/equipment/${conv.body.equipment.id}`, { inverter: true }, t);
+  assert.equal(edited.body.equipment.price, 750);
+
+  // Valores raros se ignoran y se queda el anterior
+  const bad = await req('PUT', '/me/prices', { priceTable: { normal: { '1': -5, '2': 'abc' } } }, t);
+  assert.equal(bad.body.user.priceTable.normal['1'], 600);
+  assert.equal(bad.body.user.priceTable.normal['2'], 700);
+  assert.equal((await req('PUT', '/me/prices', { priceTable: 'hola' }, t)).status, 400);
 });
 
 test('cada sticker es único y solo lo usa su técnico', async () => {

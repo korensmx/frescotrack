@@ -61,6 +61,41 @@ const toInt = (value, fallback) => {
 };
 const toMoney = (value, fallback) => Math.min(MAX_MONEY, toInt(value, fallback));
 
+// Tabla de precios del mantenimiento: cambia según si el minisplit es normal
+// o inverter y según cuántas toneladas tiene. Se guarda como texto JSON.
+export const PRICE_KINDS = ['normal', 'inverter'];
+export const PRICE_TONS = ['1', '1.5', '2', '2.5', '3'];
+
+// "1.5 Ton" -> "1.5". Si no es una de las medidas de la tabla, regresa null.
+export function tonsKey(tons) {
+  const n = Number.parseFloat(String(tons ?? '').replace(',', '.'));
+  return Number.isFinite(n) && PRICE_TONS.includes(String(n)) ? String(n) : null;
+}
+
+// Lee la tabla guardada y rellena los huecos con el precio normal del técnico.
+export function readPriceTable(raw, fallback) {
+  let saved = {};
+  try { saved = raw ? JSON.parse(raw) : {}; } catch { saved = {}; }
+  return Object.fromEntries(PRICE_KINDS.map((kind) => [kind, Object.fromEntries(PRICE_TONS.map((t) => {
+    const v = saved?.[kind]?.[t];
+    return [t, Number.isInteger(v) && v >= 0 ? v : fallback];
+  }))]));
+}
+
+// Precio sugerido para un equipo según su tipo y tonelaje.
+export function priceFor(user, tons, inverter) {
+  const key = tonsKey(tons);
+  if (!key) return user.default_price;
+  return readPriceTable(user.price_table, user.default_price)[inverter ? 'inverter' : 'normal'][key];
+}
+
+// Limpia lo que manda el celular: solo números válidos en las 10 casillas.
+function cleanPriceTable(input, current) {
+  if (!input || typeof input !== 'object') fail(400, 'La tabla de precios no es válida');
+  return Object.fromEntries(PRICE_KINDS.map((kind) => [kind, Object.fromEntries(PRICE_TONS.map((t) =>
+    [t, toMoney(input?.[kind]?.[t], current[kind][t])]))]));
+}
+
 function randomQrCode() {
   // 8 caracteres fáciles de leer (sin 0/O ni 1/I para no confundirse).
   // Son más de un billón de combinaciones, y además la base de datos revisa que no se repita.
@@ -138,6 +173,7 @@ export function createApp({
     return {
       id: u.id, email: u.email, name: u.name, businessName: u.business_name,
       phone: u.phone, city: u.city, defaultPrice: u.default_price,
+      priceTable: readPriceTable(u.price_table, u.default_price),
       messageTemplate: u.message_template || DEFAULT_TEMPLATE,
       autoSend: Boolean(u.auto_send), autoSendHour: u.auto_send_hour,
       plan: u.plan, planStatus: u.plan_status || null, trialEndsAt: u.trial_ends_at, trialDaysLeft,
@@ -411,6 +447,30 @@ export function createApp({
     res.json({ user: publicUser(getUser(u.id)) });
   });
 
+  // Guardar la tabla de precios. Si applyToEquipment viene en true, también se
+  // actualiza el precio sugerido de los equipos que ya estaban registrados.
+  api.put('/me/prices', (req, res) => {
+    const u = req.user;
+    const table = cleanPriceTable(req.body.priceTable, readPriceTable(u.price_table, u.default_price));
+    let updated = 0;
+    db.exec('BEGIN');
+    try {
+      db.prepare('UPDATE users SET price_table = ? WHERE id = ?').run(JSON.stringify(table), u.id);
+      if (req.body.applyToEquipment) {
+        const setPrice = db.prepare('UPDATE equipment SET price = ? WHERE id = ?');
+        for (const e of db.prepare('SELECT id, tons, inverter FROM equipment WHERE user_id = ?').all(u.id)) {
+          const key = tonsKey(e.tons);
+          if (key) updated += setPrice.run(table[e.inverter ? 'inverter' : 'normal'][key], e.id).changes;
+        }
+      }
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    res.json({ user: publicUser(getUser(u.id)), updatedEquipment: updated });
+  });
+
   api.put('/me/password', h(async (req, res) => {
     const ok = await bcrypt.compare(String(req.body.currentPassword || ''), req.user.password_hash);
     if (!ok) fail(400, 'La contraseña actual no es correcta');
@@ -490,7 +550,8 @@ export function createApp({
     const serviceDate = b.serviceDate || today();
     if (!isValidISODate(serviceDate)) fail(400, 'Fecha de servicio no válida');
     const interval = Math.min(24, Math.max(1, toInt(b.intervalMonths, 6)));
-    const price = toMoney(b.price, req.user.default_price);
+    // Si el celular no manda precio, lo sacamos de la tabla según tipo y tonelaje.
+    const price = toMoney(b.price, priceFor(req.user, b.tons, b.inverter));
 
     db.exec('BEGIN');
     try {
@@ -538,14 +599,19 @@ export function createApp({
     const e = ownedEquipment(req.user.id, req.params.id);
     const b = req.body;
     const interval = b.intervalMonths !== undefined ? Math.min(24, Math.max(1, toInt(b.intervalMonths, e.interval_months))) : e.interval_months;
+    const tons = b.tons !== undefined ? optText(b.tons, 20) : e.tons;
+    const inverter = b.inverter !== undefined ? (b.inverter ? 1 : 0) : e.inverter;
+    // Si cambió el tipo o el tonelaje y no mandaron precio, tomamos el de la tabla.
+    const typeChanged = tons !== e.tons || inverter !== e.inverter;
+    const price = b.price !== undefined ? toMoney(b.price, e.price) : typeChanged ? priceFor(req.user, tons, inverter) : e.price;
     db.prepare(`UPDATE equipment SET brand = ?, tons = ?, refrigerant = ?, inverter = ?, location = ?, interval_months = ?,
         price = ?, next_service_date = ? WHERE id = ?`).run(
       b.brand !== undefined ? optText(b.brand, 60) : e.brand,
-      b.tons !== undefined ? optText(b.tons, 20) : e.tons,
+      tons,
       b.refrigerant !== undefined ? optText(b.refrigerant, 20) : e.refrigerant,
-      b.inverter !== undefined ? (b.inverter ? 1 : 0) : e.inverter,
+      inverter,
       b.location !== undefined ? optText(b.location, 80) : e.location,
-      interval, b.price !== undefined ? toMoney(b.price, e.price) : e.price,
+      interval, price,
       addMonths(e.last_service_date, interval), e.id);
     res.json({ equipment: equipmentRow(ownedEquipment(req.user.id, e.id)) });
   });

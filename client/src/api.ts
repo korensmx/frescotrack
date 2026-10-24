@@ -2,9 +2,20 @@
 
 export type Status = 'overdue' | 'due' | 'soon' | 'ok';
 
+// Precios del mantenimiento: tipo de minisplit -> toneladas ("1", "1.5"...) -> precio.
+export type PriceKind = 'normal' | 'inverter';
+export type PriceTable = Record<PriceKind, Record<string, number>>;
+export const PRICE_TONS = ['1', '1.5', '2', '2.5', '3'];
+
+// Busca en la tabla el precio de un equipo ("1.5 Ton" + inverter).
+export function priceFor(user: User | null, tons: string, inverter: boolean) {
+  const key = String(Number.parseFloat(tons));
+  return user?.priceTable?.[inverter ? 'inverter' : 'normal']?.[key] ?? user?.defaultPrice ?? 750;
+}
+
 export interface User {
   id: number; email: string; name: string; businessName: string; phone: string; city: string;
-  defaultPrice: number; messageTemplate: string; autoSend: boolean; autoSendHour: number; plan: 'trial' | 'pro'; planStatus: string | null;
+  defaultPrice: number; priceTable: PriceTable; messageTemplate: string; autoSend: boolean; autoSendHour: number; plan: 'trial' | 'pro'; planStatus: string | null;
   trialEndsAt: string; trialDaysLeft: number; active: boolean;
 }
 

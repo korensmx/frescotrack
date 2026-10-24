@@ -10,6 +10,7 @@ import WhatsApp from './pages/WhatsApp';
 import { Clients, ClientDetail } from './pages/Clients';
 import EquipmentDetail from './pages/EquipmentDetail';
 import Settings from './pages/Settings';
+import Prices from './pages/Prices';
 import Pro from './pages/Pro';
 import Stickers from './pages/Stickers';
 import PublicEquipment from './pages/PublicEquipment';
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="clientes/:id" element={<ClientDetail />} />
           <Route path="equipos/:id" element={<EquipmentDetail />} />
           <Route path="ajustes" element={<Settings />} />
+          <Route path="ajustes/precios" element={<Prices />} />
           <Route path="pro" element={<Pro />} />
           <Route path="stickers" element={<Stickers />} />
           <Route path="*" element={<Navigate to="/" replace />} />

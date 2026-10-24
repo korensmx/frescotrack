@@ -88,6 +88,7 @@ const NEW_COLUMNS = [
   ['users', 'auto_send', 'INTEGER NOT NULL DEFAULT 1'],       // 1 = mandar recordatorios solos
   ['users', 'auto_send_hour', 'INTEGER NOT NULL DEFAULT 10'], // hora del día para mandarlos
   ['users', 'token_version', 'INTEGER NOT NULL DEFAULT 0'],   // sube al cambiar contraseña = cierra otras sesiones
+  ['users', 'price_table', 'TEXT'],                            // precios por tipo y tonelaje (JSON)
 ];
 
 function migrate(db) {
